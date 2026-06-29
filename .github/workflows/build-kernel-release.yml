@@ -1100,6 +1100,7 @@ jobs:
             cat << EOF >> release_notes.md
           - **KernelSU** - Kernel-level root solution
           EOF
+          fi
           cat << EOF >> release_notes.md
           - **SUSFS $SUSFS_BASE_VERSION** - Advanced hiding and security features
           EOF
