@@ -973,12 +973,13 @@ jobs:
               echo "Warning: No JSON entry found for model: $model" >&2
               features_str="N/A"
             else
-              IFS=$'\t' read -r hmbird susfs bbr bbg ttl ip_set unicode ds ntsync <<< "$feature_flags"
+              IFS=$'\t' read -r hmbird susfs bbr bbr3 bbg  ttl ip_set unicode ds ntsync <<< "$feature_flags"
               
               # Build features string based on boolean values
               [[ "$hmbird" == "true" ]] && features+=("🐦 HMBIRD")
               [[ "$susfs" == "true" ]] && features+=("ඞ SusFS")
               [[ "$bbr" == "true" ]] && features+=("🚀 BBR")
+              [[ "$bbr3" == "true" ]] && features+=("🚀 BBRv3")
               [[ "$bbg" == "true" ]] && features+=("🛡️ BBG")
               [[ "$ttl" == "true" ]] && features+=("🌐 TTL")
               [[ "$ip_set" == "true" ]] && features+=("🧱 IP_SET & IPv6 NAT")
@@ -1117,6 +1118,8 @@ jobs:
           
           ### 🚀 Performance & Networking
           - **BBRv1** - Improved TCP congestion control
+          - **BBRv3** - Improved TCP congestion control
+          - **CAKE and PIE qdisc Support** - Better Net Schedulers
           - **Wireguard** - Built-in VPN support
           - **IP Set & IPv6 NAT Support** - Advanced firewall capabilities and IPv6 NAT Support
           - **TTL Target Support** - Network packet manipulation
