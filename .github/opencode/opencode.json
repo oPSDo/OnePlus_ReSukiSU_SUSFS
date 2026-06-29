@@ -1,0 +1,17 @@
+{
+  "provider": {
+    "custom-openai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Custom OpenAI Provider",
+      "options": {
+        "baseURL": "${OPENAI_BASE_URL}",
+        "apiKey": "${OPENAI_API_KEY}"
+      },
+      "models": {
+        "${OPENAI_MODEL}": {
+          "name": "Custom Model"
+        }
+      }
+    }
+  }
+}
