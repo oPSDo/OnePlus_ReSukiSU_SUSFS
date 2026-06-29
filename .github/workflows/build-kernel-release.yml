@@ -99,7 +99,6 @@ jobs:
       susfs_hash_android15_6_6:  ${{ steps.set-matrix.outputs.susfs_hash_android15_6_6 }}
       susfs_hash_android16_6_12: ${{ steps.set-matrix.outputs.susfs_hash_android16_6_12 }}
       ksu_resolved_hash:    ${{ steps.set-matrix.outputs.ksu_resolved_hash }}
-      ksu_options_normalized: ${{ steps.set-matrix.outputs.ksu_options_normalized }}
       susfs_base_version: ${{ steps.set-matrix.outputs.susfs_base_version }}
     env:
       GH_TOKEN: ${{ github.token }}
@@ -433,11 +432,11 @@ jobs:
 
       - name: 📊 Build plan summary
         run: |
-          ksu_type="${{ fromJSON(steps.set-matrix.outputs.ksu_options_normalized)[0].type }}"
-          ksu_ref="${{ fromJSON(steps.set-matrix.outputs.ksu_options_normalized)[0].hash }}"
+          ksu_type="${{ inputs.ksu_type }}"
+          ksu_ref="${{ inputs.ksu_branch_or_hash }}"
           
           ksu_display=""
-          if [ "$ksu_type" = "KSUN" ] || [ "$ksu_type" = "KSU" ]; then
+          if [ "$ksu_type" = "ReSukiSU" ] || [ "$ksu_type" = "KSU" ]; then
             if [[ "$ksu_ref" =~ ^[0-9a-f]{40}$ ]]; then
               ksu_display+="📌 \`$ksu_type\`, \`$ksu_ref\`"
             else
