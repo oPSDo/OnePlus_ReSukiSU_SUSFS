@@ -1,10 +1,11 @@
 <div align="center">
 
-# 🔥 Huangdihd's Fork of Wild Kernels for OnePlus (Oppo/Realme)
+# 🔥 Wild Kernels for OnePlus (Oppo/Realme)
 
+[![KernelSU-Next](https://img.shields.io/badge/KernelSU_Next-Supported-green)](https://kernelsu-next.github.io/webpage/)
 [![KernelSU](https://img.shields.io/badge/KernelSU-Supported-green)](https://kernelsu.org/)
-[![ReSukiSU](https://img.shields.io/badge/ReSukiSU-Supported-green)](https://resukisu.github.io/)
-[![SUSFS](https://img.shields.io/badge/SUSFS-Integrated-orange)](https://gitlab.com/simonpunk/susfs4ksu)
+[![Wild KSU](https://img.shields.io/badge/Wild_KSU-Not%20Supported-cb2431)](https://github.com/WildKernels/Wild_KSU/)
+[![SUSFS](https://img.shields.io/badge/SUSFS-Integrated-orange?logo=gitlab)](https://gitlab.com/simonpunk/susfs4ksu)
 [![OnePlusOSS Tracking Status](https://img.shields.io/badge/OnePlusOSS--Tracker-active-green)](https://github.com/WildKernels/OnePlus_KernelSU_SUSFS/blob/status-page/README.md)
 
 </div>
@@ -66,11 +67,14 @@ Flashing this kernel will not void your warranty, but there is always a risk of 
 
 ## ✨ Features
 
-- 🔐 **ReSukiSU**: Kernel-based Android Root Solution,forked from sukisu
+- 🔐 **KernelSU / KernelSU-Next**: A root solution for Android GKI devices that works in kernel mode and grants root permission to userspace applications directly in kernel space
+- 🔥 **WildKSU Manager Support**: Support for the Root Manager developed by our team with lots of customisations
 - 🥷 **SUSFS**: An addon root hiding kernel patches and userspace module for KernelSU
-- 🛡️ **BBG**: LSM-based Baseband Guard security to protect critical device partitions
+- 🛡️ **BBG**: LSM-based Baseband Guard security to protect critical device partitions. abl/efisp can be added to whitelist for efisp exploit devices.
 - 🛠️ **HMBIRD SCX**: Scheduler extensions for SM8750/MT6991 devices
 - 🖧 **BBRv1**: Improved TCP congestion control
+- 🖧 **BBRv3**: Improved TCP congestion control
+- 🚦 **CAKE and PIE qdisc Support**: Better Net Schedulers
 - ✅ **LTO**: Link Time Optimisation enabled
 - 🚀 **Optimisation patches**: Memory, I/O, CPU scheduler, network and other general tunings
 - 🌐 **TTL Target Support**: Network packet manipulation
@@ -84,12 +88,6 @@ Flashing this kernel will not void your warranty, but there is always a risk of 
 
 ## 📋 Installation Instructions
 
-- **KernelSU**: Developed by [tiann](https://github.com/tiann/KernelSU).
-- **ReSukiSU**: Developed by [ReSukiSU Team](https://github.com/ReSukiSU/ReSukiSU)
-- **Magic-KSU**: Developed by [5ec1cff](https://github.com/5ec1cff/KernelSU).  
-- **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git).
-- **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15).
-- **Sultan Kernels**: Developed by [kerneltoast](https://github.com/kerneltoast).
 For GKI installation, please follow the official guide:
 
 📖 **[KernelSU Installation Guide](https://kernelsu.org/guide/installation.html)**
@@ -108,7 +106,7 @@ You can also find Installation instructions in the release notes.
 | 🔧 **Project** | 👨‍💻 **Developer** | 🔗 **Link** |
 |:---------------:|:----------------:|:-----------:|
 | **KernelSU** | tiann | [![GitHub](https://img.shields.io/badge/GitHub-tiann-blue?style=flat-square&logo=github)](https://github.com/tiann/KernelSU) |
-| **ReSukiSU** | resukisu | [![GitHub](https://img.shields.io/badge/GitHub-resukisu-blue?style=flat-square&logo=github)](https://github.com/ReSukiSU/ReSukiSU) |
+| **KernelSU-Next** | rifsxd | [![GitHub](https://img.shields.io/badge/GitHub-rifsxd-blue?style=flat-square&logo=github)](https://github.com/KernelSU-Next/KernelSU-Next) |
 | **Magic-KSU** | 5ec1cff | [![GitHub](https://img.shields.io/badge/GitHub-5ec1cff-blue?style=flat-square&logo=github)](https://github.com/5ec1cff/KernelSU) |
 | **SUSFS** | simonpunk | [![GitLab](https://img.shields.io/badge/GitLab-simonpunk-orange?style=flat-square&logo=gitlab)](https://gitlab.com/simonpunk/susfs4ksu.git) |
 | **SUSFS Module** | sidex15 | [![GitHub](https://img.shields.io/badge/GitHub-sidex15-blue?style=flat-square&logo=github)](https://github.com/sidex15) |
@@ -134,8 +132,8 @@ If you encounter any issues or need help, feel free to:
 
 <div align="center">
   
-[![Telegram](https://img.shields.io/badge/Telegram-huangdihd-blue?logo=telegram)](https://t.me/huangdihd)
-[![Telegram Group](https://img.shields.io/badge/Telegram-huangdihd_wildkernel-blue?logo=telegram)](https://t.me/huangdihd_wildkernel)
+[![Telegram](https://img.shields.io/badge/Telegram-fatalcoder524-blue?logo=telegram)](https://t.me/anonymous_yolo)
+[![Telegram Group](https://img.shields.io/badge/Telegram-WildKernels-blue?logo=telegram)](https://t.me/WildKernelsTG)
 
 </div>
 

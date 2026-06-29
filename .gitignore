@@ -1,6 +1,7 @@
-.gitignore
-GEMINI.md
-.DS_Store
-opencode.json
-.github/opencode/conflict_files.txt
-.github/opencode/conflict_summary.txt
+.actrc
+.env
+.input
+.vscode
+*.Identifier
+*.orig
+*.rej
