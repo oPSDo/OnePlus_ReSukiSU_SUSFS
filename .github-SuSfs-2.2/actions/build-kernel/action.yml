@@ -1269,13 +1269,8 @@ runs:
             OP13-6.6.30)
               HMBIRD_MODEL="OP13-PJZ" ;;
           esac
-          # Upstream WildKernels/kernel_patches names fengchi patches with the
-          # A14/A15/A16 OS convention (e.g. fengchi_OP13T_A16.patch). This fork
-          # keeps OOS naming everywhere else, so translate OOS<NN> -> A<NN> only
-          # for the fengchi filename lookup against the upstream patches repo.
-          HMBIRD_OS="${OP_OS_VERSION/OOS/A}"
-          dos2unix "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"
-          if ! patch -p1 --fuzz=2 < "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"; then
+          dos2unix "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${OP_OS_VERSION}.patch"
+          if ! patch -p1 --fuzz=2 < "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${OP_OS_VERSION}.patch"; then
             echo "::warning::hmbird fengchi patch did not apply cleanly. Continuing without it."
             find . -name "*.rej" -exec echo "=== {} ===" \; -exec cat {} \;
             find . -name "*.rej" -delete 2>/dev/null || true
@@ -1468,9 +1463,9 @@ runs:
         fi
         echo "Patching use_unlikely_wrap_cpufreq.patch"
         if ! patch -p1 --fuzz=2 --forward < "$KERNEL_PATCHES_FOLDER/common/use_unlikely_wrap_cpufreq.patch"; then
-          echo "::warning::use_unlikely_wrap_cpufreq patch did not apply cleanly. Continuing without it (cpufreq optimization only)."
+          echo "::error::use_unlikely_wrap_cpufreq patch failed. Dumping all .rej files:"
           find . -name "*.rej" -exec echo "=== {} ===" \; -exec cat {} \;
-          find . -name "*.rej" -delete 2>/dev/null || true
+          exit 1
         fi
         
         echo "✅ Other patches applied"
@@ -1493,8 +1488,7 @@ runs:
           OP10pro-5.10.209|OP10t-5.10.209|OP-ACE-5.10.209|OP11r-5.10.209|\
           OP-NORD-3-5.10.209|OP-ACE-RACE-5.10.209)
             if [[ "$OP_OS_VERSION" == "OOS15" ]]; then
-              # Upstream names this compat patch with the A-OS convention (_A14).
-              NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_android12-5.10_A14.patch"
+              NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_android12-5.10_OOS14.patch"
             fi
             ;;
         esac
@@ -1503,8 +1497,8 @@ runs:
             echo "::error::NTSync compat patch not found for ${OP_MODEL}: $(basename $NTSYNC_PATCH)"
             exit 1
           fi
-        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch" ]; then
-          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch"
+        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch" ]; then
+          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch"
         elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch" ]; then
           NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch"
         else
@@ -1877,7 +1871,7 @@ runs:
         echo "Customize Kernel Branding"
         cd "$COMMON_KERNEL_FOLDER"
         mkdir -p out
-        CUSTOM_LOCALVERSION="-${ANDROID_VER}-${OP_UNAME}-${{ github.actor }}"
+        CUSTOM_LOCALVERSION="-${ANDROID_VER}-${OP_UNAME}"
         echo "CUSTOM_LOCALVERSION=$CUSTOM_LOCALVERSION" >> "$GITHUB_ENV"
 
     - name: Disable GPUEB
@@ -1983,7 +1977,7 @@ runs:
         
         make LD="$COMMON_KERNEL_FOLDER/ld-wrapper" HOSTLD="$COMMON_KERNEL_FOLDER/ld-wrapper" O="$OUT" gki_defconfig
         
-        LOCAL_LOCALVERSION="${CUSTOM_LOCALVERSION:--OP-RESUKISU}"
+        LOCAL_LOCALVERSION="${CUSTOM_LOCALVERSION:--o-PSD}"
         if [ -n "${LOCAL_LOCALVERSION:-}" ]; then
           scripts/config --file "$OUT/.config" --set-str LOCALVERSION "${LOCAL_LOCALVERSION}"
           scripts/config --file "$OUT/.config" -d LOCALVERSION_AUTO || true
@@ -2257,6 +2251,9 @@ runs:
         sed -i 's/do.check_boot_version=.*/do.check_boot_version=1/' anykernel.sh
         
         ZIP_MODEL=$(echo "$OP_MODEL" | sed 's/-[0-9]\+\.[0-9]\+\.[0-9]\+$//')
+        if [ "$ZIP_MODEL" = "OP12" ]; then
+          ZIP_MODEL="X7U"
+        fi
         if [ "${{ env.OP_SUSFS }}" = true ]; then
           ZIP_NAME="AK3_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_${KSUVER:-unknown}_SuSFS_${SUSVER:-unknown}.zip"
         else

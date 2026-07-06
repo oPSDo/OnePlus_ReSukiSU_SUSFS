@@ -15,12 +15,14 @@
   "disk_cleanup": false,
   "hmbird": false,
   "susfs": true,
+  "opt": true,
   "ds": true,
   "bbg": true,
   "bbr": true,
+  "bbr3": true,
   "ttl": true,
   "ip_set": true,
   "unicode": true,
   "ntsync": true,
-  "uname": "o-PSD"
+  "uname": "O-PSD"
 }
