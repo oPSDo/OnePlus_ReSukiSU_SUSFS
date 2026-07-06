@@ -1,4 +1,4 @@
-name: Build and Release OnePlus Kernels
+name: Build and Release OKI Kernels
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: OOS14+15+16
+        default: OOS16
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -961,6 +961,10 @@ jobs:
             
             IFS='|' read -r model os_ver kernel_ver _ _ _ zipfile <<< "${device_info["$full_key"]}"
             
+            model_lookup="$model"
+            if [ "$model" = "X7U" ]; then
+              model_lookup="OP12"
+            fi
             # Use jq to extract feature flags for this model from the JSON matrix.
             # Reconstruct the original model name (e.g. OP13r-6.1.118) in case the ZIP
             # had the kernel version suffix stripped for display. Try exact ORIG_MODEL
