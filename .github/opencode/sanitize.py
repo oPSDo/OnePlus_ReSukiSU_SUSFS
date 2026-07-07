@@ -14,8 +14,10 @@ def sanitize():
     # 1. Update manifest XMLs
     xml_files = glob.glob("manifests/**/*.xml", recursive=True)
     for xml_file in xml_files:
-        run_command(f"sed -i 's|github.com/WildKernels/AnyKernel3|github.com/huangdihd/AnyKernel3|g' {xml_file}")
-        run_command(f"sed -i 's|fetch=\"https://github.com/WildKernels\" name=\"wild\"|fetch=\"https://github.com/huangdihd\" name=\"wild\"|g' {xml_file}")
+        run_command(f"sed -i 's|github.com/WildKernels/AnyKernel3|github.com/oPSDo/AnyKernel3|g' {xml_file}")
+        run_command(f"sed -i 's|github.com/huangdihd/AnyKernel3|github.com/oPSDo/AnyKernel3|g' {xml_file}")
+        run_command(f"sed -i 's|fetch=\"https://github.com/WildKernels\" name=\"wild\"|fetch=\"https://github.com/oPSDo\" name=\"wild\"|g' {xml_file}")
+        run_command(f"sed -i 's|fetch=\"https://github.com/huangdihd\" name=\"wild\"|fetch=\"https://github.com/oPSDo\" name=\"wild\"|g' {xml_file}")
         run_command(f"sed -i -E 's/(name=\"AnyKernel3\".*revision=\")[^\"]+(\")/\\1gki-2.0\\2/g' {xml_file}")
 
     # 2. Update config JSONs
@@ -26,7 +28,8 @@ def sanitize():
     # 3. Update build-kernel action.yml AnyKernel3 URL
     action_path = ".github/actions/build-kernel/action.yml"
     if os.path.exists(action_path):
-        run_command(f"sed -i 's|https://github.com/WildKernels/AnyKernel3|https://github.com/huangdihd/AnyKernel3|g' {action_path}")
+        run_command(f"sed -i 's|https://github.com/WildKernels/AnyKernel3|https://github.com/oPSDo/AnyKernel3|g' {action_path}")
+        run_command(f"sed -i 's|https://github.com/huangdihd/AnyKernel3|https://github.com/oPSDo/AnyKernel3|g' {action_path}")
         
         # 4. Remove KernelSU-Next / KSUN steps
         with open(action_path, 'r') as f:
