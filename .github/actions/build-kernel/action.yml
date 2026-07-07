@@ -2264,9 +2264,9 @@ runs:
           ZIP_MODEL="X7U"
         fi
         if [ "${{ env.OP_SUSFS }}" = true ]; then
-          ZIP_NAME="AK3_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_${KSUVER:-unknown}_SuSFS_${SUSVER:-unknown}.zip"
+          ZIP_NAME="PSD_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_v${KSUVER:-unknown}_SuSFS_${SUSVER:-unknown}.zip"
         else
-          ZIP_NAME="AK3_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_${KSUVER:-unknown}.zip"
+          ZIP_NAME="PSD_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_v${KSUVER:-unknown}.zip"
         fi
         mkdir -p "$ARTIFACTS_FOLDER"
         
