@@ -1,4 +1,4 @@
-name: Build and Release OKI Kernels
+name: Build and Release OnePlus Kernels
 
 permissions:
   contents: write
@@ -13,7 +13,7 @@ on:
         type: boolean
         default: false
       op_model:
-        description: 'Select the OKI kernels to build'
+        description: 'Select the OnePlus kernels to build'
         required: true
         type: choice
         options:
@@ -28,7 +28,7 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: OOS16
+        default: OOS14+15+16
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -845,7 +845,7 @@ jobs:
       REPO_NAME: ${{ github.event.repository.name }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SUSFS_BASE_VERSION: ${{ needs.set-op-model.outputs.susfs_base_version }}
-      RELEASE_NAME: 'OKI Kernels With ${{ inputs.ksu_type }} & SUSFS ${{ needs.set-op-model.outputs.susfs_base_version }}'
+      RELEASE_NAME: 'OnePlus Kernels With ${{ inputs.ksu_type }} & SUSFS ${{ needs.set-op-model.outputs.susfs_base_version }}'
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v6
@@ -879,17 +879,6 @@ jobs:
           path: ./downloaded-artifacts
           merge-multiple: true
           skip-decompress: true
-
-      - name: 🧹 Exclude ccache binary from release staging
-        run: |
-          # merge-multiple pulls every run artifact (including the shared
-          # ccache-binary) into ./downloaded-artifacts. The ccache binary is a
-          # build-time helper and must never become a release asset, so drop it
-          # before notes generation / asset upload. The ccache download-once
-          # mechanism (prepare_ccache job + ccache-binary artifact) is untouched.
-          find ./downloaded-artifacts -maxdepth 2 -type f -name ccache -delete
-          rm -rf ./downloaded-artifacts/ccache-binary
-          echo "✅ ccache binary excluded from release staging"
 
       - name: 📝 Generate Device List and Final Release Notes
         id: generate-notes
@@ -942,7 +931,7 @@ jobs:
             <<< "${{ needs.set-op-model.outputs.active_gki_keys }}"
           
           cat << EOF > release_notes.md
-          # 🎯 OKI Kernels with $KSU_TYPE & SUSFS $SUSFS_BASE_VERSION
+          # 🎯 OnePlus Kernels with $KSU_TYPE & SUSFS $SUSFS_BASE_VERSION
           
           > **Build Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')  
           > **Build ID:** \`${{ github.run_id }}\`  
@@ -965,13 +954,14 @@ jobs:
             if [ "$model" = "X7U" ]; then
               model_lookup="OP12"
             fi
+            
             # Use jq to extract feature flags for this model from the JSON matrix.
             # Reconstruct the original model name (e.g. OP13r-6.1.118) in case the ZIP
             # had the kernel version suffix stripped for display. Try exact ORIG_MODEL
             # first, fall back to base MODEL, both filtered by os_version.
             full_kv=$(echo "$kernel_ver" | sed 's/^[^-]*-//')
-            possible_orig_model="${model}-${full_kv}"
-            feature_flags=$(jq -r --arg MODEL "$model" --arg ORIG_MODEL "$possible_orig_model" --arg OS "$os_ver" '
+            possible_orig_model="${model_lookup}-${full_kv}"
+            feature_flags=$(jq -r --arg MODEL "$model_lookup" --arg ORIG_MODEL "$possible_orig_model" --arg OS "$os_ver" '
               ([ .[] | select(.model == $ORIG_MODEL and .os_version == $OS) ][0]) //
               ([ .[] | select(.model == $MODEL      and .os_version == $OS) ][0]) |
               "\(.hmbird // false)\t\(.susfs // false)\t\(.bbr // false)\t\(.bbg // false)\t\(.ttl // false)\t\(.ip_set // false)\t\(.unicode // false)\t\(.ds // false)\t\(.ntsync // false)"
@@ -1209,7 +1199,6 @@ jobs:
           
           - **ReSukiSU Team** - Root solution
           - **simonpunk** - SUSFS development
-          - **Oppo** - Kernel source code
           - **OnePlus** - Kernel source code
           - **Community Contributors** - Testing and feedback
           
@@ -1299,7 +1288,7 @@ jobs:
           echo "Found $ZIP_COUNT packages for models: $MODELS, KSU Ver: $KSU_VERS"
           
           # Use pure Bash multi-line string. True newlines are preserved!
-          MSG_TEXT="🚀 <b>OKI Kernel Build Successful!</b>
+          MSG_TEXT="🚀 <b>OnePlus Kernel Build Successful!</b>
           ━━━━━━━━━━━━━━━━━━
           <b>🏷️ Release Tag:</b> <code>${{ env.NEW_TAG }}</code>
           <b>🔐 Root Solution:</b> ${{ inputs.ksu_type }} (v${KSU_VERS})
