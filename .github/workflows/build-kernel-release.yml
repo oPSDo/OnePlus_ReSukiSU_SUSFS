@@ -3,6 +3,7 @@ name: Build and Release OnePlus Kernels
 permissions:
   contents: write
   actions: write
+  workflows: write
 
 on:
   workflow_dispatch:
@@ -955,10 +956,7 @@ jobs:
             if [ "$model" = "X7U" ]; then
               model_lookup="OP12"
             fi
-            model_lookup="$model"
-            if [ "$model" = "X6P" ]; then
-              model_lookup="OP11"
-            fi
+            
             # Use jq to extract feature flags for this model from the JSON matrix.
             # Reconstruct the original model name (e.g. OP13r-6.1.118) in case the ZIP
             # had the kernel version suffix stripped for display. Try exact ORIG_MODEL
