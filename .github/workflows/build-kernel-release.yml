@@ -17,12 +17,6 @@ on:
         required: true
         type: choice
         options:
-          - OOS14+15+16
-          - OOS15+16
-          - OOS14+15
-          - OOS16
-          - OOS15
-          - OOS14
           - A14+15+16
           - A15+16
           - A14+15
@@ -34,7 +28,7 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: OOS16
+        default: A16
       ksu_type:
         description: 'Select KSU Type'
         required: true
