@@ -200,8 +200,8 @@ runs:
         
         if [[ -z "$os_version" ]]; then
           errors+=("Input 'os_version' cannot be empty")
-        elif [[ ! "$os_version" =~ ^OOS ]]; then
-          errors+=("Input 'os_version' does not start with 'OOS'. Got: '$os_version'")
+        elif [[ ! "$os_version" =~ ^(A|OOS) ]]; then
+          errors+=("Input 'os_version' does not start with 'A' or 'OOS'. Got: '$os_version'")
         fi
         
         if [[ -z "$hmbird" ]]; then
@@ -1363,7 +1363,7 @@ runs:
           # A14/A15/A16 OS convention (e.g. fengchi_OP13T_A16.patch). This fork
           # keeps OOS naming everywhere else, so translate OOS<NN> -> A<NN> only
           # for the fengchi filename lookup against the upstream patches repo.
-          HMBIRD_OS="${OP_OS_VERSION/OOS/A}"
+          HMBIRD_OS="${OP_OS_VERSION}"
           dos2unix "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"
           if ! patch -p1 --fuzz=2 < "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"; then
             echo "::warning::hmbird fengchi patch did not apply cleanly. Continuing without it."
@@ -1552,7 +1552,7 @@ runs:
           OP10r|OP-ACE-2-5.10.209|OP-ACE-2V-5.10.209|OP-PAD-MT6983-5.10.209|\
           OP10pro-5.10.209|OP10t-5.10.209|OP-ACE-5.10.209|OP11r-5.10.209|\
           OP-NORD-3-5.10.209|OP-ACE-RACE-5.10.209)
-            if [[ "$OP_OS_VERSION" == "OOS15" ]]; then
+            if [[ "$OP_OS_VERSION" == "A15" || "$OP_OS_VERSION" == "OOS15" ]]; then
               # Upstream names this compat patch with the A-OS convention (_A14).
               NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_android12-5.10_A14.patch"
             fi
@@ -1563,8 +1563,8 @@ runs:
             echo "::error::NTSync compat patch not found for ${OP_MODEL}: $(basename $NTSYNC_PATCH)"
             exit 1
           fi
-        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch" ]; then
-          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch"
+        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch" ]; then
+          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch"
         elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch" ]; then
           NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch"
         else

@@ -182,7 +182,7 @@ jobs:
           
           filtered=$(echo "$filtered" | jq '
             sort_by(
-              (.os_version | gsub("OOS"; "") | tonumber) * -1,
+              (.os_version | gsub("A"; "") | gsub("OOS"; "") | tonumber) * -1,
               .model
             )
           ')
@@ -417,7 +417,7 @@ jobs:
           
           merged_matrix=$(echo "$merged_matrix" | jq '
             sort_by(
-              (.os_version | gsub("OOS"; "") | tonumber? // 0) * -1,
+              (.os_version | gsub("A"; "") | gsub("OOS"; "") | tonumber? // 0) * -1,
               .model
             )
           ')
