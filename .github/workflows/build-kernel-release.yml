@@ -17,12 +17,6 @@ on:
         required: true
         type: choice
         options:
-          - A14+15+16
-          - A15+16
-          - A14+15
-          - A16
-          - A15
-          - A14
           - OOS14+15+16
           - OOS15+16
           - OOS14+15
@@ -34,7 +28,7 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: A16
+        default: OOS16
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -144,31 +138,32 @@ jobs:
           jq_filter="."
           
           case "$input" in
-            A14+15+16|OOS14+15+16)
+            OOS14+15+16)
               ;;
-            A15+16|OOS15+16)
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\"))"
+            OOS15+16)
+              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\"))"
               ;;
-            A14+15|OOS14+15)
-              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\" or .os_version == \"OOS14\" or .os_version == \"OOS15\"))"
+            OOS14+15)
+              jq_filter="map(select(.os_version == \"OOS14\" or .os_version == \"OOS15\"))"
               ;;
-            A16|OOS16)
-              jq_filter="map(select(.os_version == \"A16\" or .os_version == \"OOS16\"))"
+            OOS16)
+              jq_filter="map(select(.os_version == \"OOS16\"))"
               ;;
-            A15|OOS15)
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"OOS15\"))"
+            OOS15)
+              jq_filter="map(select(.os_version == \"OOS15\"))"
               ;;
-            A14|OOS14)
-              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"OOS14\"))"
+            OOS14)
+              jq_filter="map(select(.os_version == \"OOS14\"))"
               ;;
             android*-*.*)
               # Extract android version and kernel version
               IFS='-' read -r av kv <<< "$input"
               
-              # Build android*-* for A15/A16 & OOS15/OOS16
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
+              # Build android*-* only for OOS15 and OOS16
+              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
               
               echo "ℹ️  Android-Kernel filter applied: $av-$kv"
+              echo "   Restricted to: OOS15 and OOS16 only"
               ;;
             *)
               echo "::warning::Unknown input '$input'. Using empty filter."
@@ -181,7 +176,7 @@ jobs:
           
           filtered=$(echo "$filtered" | jq '
             sort_by(
-              (.os_version | gsub("OOS"; "") | gsub("A"; "") | tonumber) * -1,
+              (.os_version | gsub("OOS"; "") | tonumber) * -1,
               .model
             )
           ')
