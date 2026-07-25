@@ -1,4 +1,4 @@
-name: Build and Release OKI Kernels
+name: Build and Release OnePlus Kernels
 
 permissions:
   contents: write
@@ -23,18 +23,12 @@ on:
           - OOS16
           - OOS15
           - OOS14
-          - A14+15+16
-          - A15+16
-          - A14+15
-          - A16
-          - A15
-          - A14
           - android16-6.12
           - android15-6.6
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: A16
+        default: OOS14+15+16
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -133,7 +127,8 @@ jobs:
           for i in "${!all_json_files[@]}"; do
             file="${all_json_files[$i]}"
             if [ -f "$file" ]; then
-              jq -r '.' "$file" >> matrix.json
+              # Convert OOS to A (e.g. OOS16 -> A16) on the fly
+              jq -r '.os_version |= sub("OOS"; "A")' "$file" >> matrix.json
               if [ $((i+1)) -lt ${#all_json_files[@]} ]; then
                 echo "," >> matrix.json
               fi
@@ -144,30 +139,29 @@ jobs:
           jq_filter="."
           
           case "$input" in
-            A14+15+16|OOS14+15+16)
-              jq_filter="."
+            OOS14+15+16)
               ;;
-            A15+16|OOS15+16)
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\"))"
+            OOS15+16)
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\"))"
               ;;
-            A14+15|OOS14+15)
-              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\" or .os_version == \"OOS14\" or .os_version == \"OOS15\"))"
+            OOS14+15)
+              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\"))"
               ;;
-            A16|OOS16)
-              jq_filter="map(select(.os_version == \"A16\" or .os_version == \"OOS16\"))"
+            OOS16)
+              jq_filter="map(select(.os_version == \"A16\"))"
               ;;
-            A15|OOS15)
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"OOS15\"))"
+            OOS15)
+              jq_filter="map(select(.os_version == \"A15\"))"
               ;;
-            A14|OOS14)
-              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"OOS14\"))"
+            OOS14)
+              jq_filter="map(select(.os_version == \"A14\"))"
               ;;
             android*-*.*)
               # Extract android version and kernel version
               IFS='-' read -r av kv <<< "$input"
               
               # Build android*-* only for OOS15 and OOS16
-              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
               
               echo "ℹ️  Android-Kernel filter applied: $av-$kv"
               echo "   Restricted to: OOS15 and OOS16 only"
@@ -183,7 +177,7 @@ jobs:
           
           filtered=$(echo "$filtered" | jq '
             sort_by(
-              (.os_version | gsub("A"; "") | gsub("OOS"; "") | tonumber) * -1,
+              (.os_version | gsub("A"; "") | tonumber) * -1,
               .model
             )
           ')
@@ -418,7 +412,7 @@ jobs:
           
           merged_matrix=$(echo "$merged_matrix" | jq '
             sort_by(
-              (.os_version | gsub("A"; "") | gsub("OOS"; "") | tonumber? // 0) * -1,
+              (.os_version | gsub("A"; "") | tonumber? // 0) * -1,
               .model
             )
           ')
@@ -1018,6 +1012,8 @@ jobs:
             
             if [[ "$os_ver" =~ ^OOS[0-9]+$ ]]; then
               os_display_version="Android ${os_ver#OOS}"
+            elif [[ "$os_ver" =~ ^A[0-9]+$ ]]; then
+              os_display_version="Android ${os_ver#A}"
             else
               os_display_version=$os_ver
             fi

@@ -128,12 +128,19 @@ runs:
         android_version="$OP_ANDROID_VERSION"
         kernel_version="$OP_KERNEL_VERSION"
         os_version="$OP_OS_VERSION"
+        
+        # Convert OOS to A if present (e.g. OOS16 -> A16)
+        if [[ "$os_version" =~ ^OOS ]]; then
+          os_version="${os_version/OOS/A}"
+          echo "OP_OS_VERSION=$os_version" >> "$GITHUB_ENV"
+          export OP_OS_VERSION="$os_version"
+        fi
         hmbird="$OP_HMBIRD"
         susfs="$OP_SUSFS"
-        opt="$OP_OPT"
+        opt="${OP_OPT:-false}"
         bbg="$OP_BBG"
         bbr="$OP_BBR"
-        bbr3="$OP_BBR3"
+        bbr3="${OP_BBR3:-false}"
         ttl="$OP_TTL"
         ip_set="$OP_IP_SET"
         rust_build="$OP_RUST_BUILD"
@@ -201,8 +208,8 @@ runs:
         
         if [[ -z "$os_version" ]]; then
           errors+=("Input 'os_version' cannot be empty")
-        elif [[ ! "$os_version" =~ ^OOS ]]; then
-          errors+=("Input 'os_version' does not start with 'OOS'. Got: '$os_version'")
+        elif [[ ! "$os_version" =~ ^A ]]; then
+          errors+=("Input 'os_version' does not start with 'A'. Got: '$os_version'")
         fi
         
         if [[ -z "$hmbird" ]]; then
