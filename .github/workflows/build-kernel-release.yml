@@ -34,7 +34,7 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: OOS16
+        default: A16
       ksu_type:
         description: 'Select KSU Type'
         required: true
