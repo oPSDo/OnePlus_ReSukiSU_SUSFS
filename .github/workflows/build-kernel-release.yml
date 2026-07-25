@@ -144,22 +144,23 @@ jobs:
           jq_filter="."
           
           case "$input" in
-            OOS14+15+16)
+            A14+15+16|OOS14+15+16)
+              jq_filter="."
               ;;
-            OOS15+16)
-              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\"))"
+            A15+16|OOS15+16)
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\"))"
               ;;
-            OOS14+15)
-              jq_filter="map(select(.os_version == \"OOS14\" or .os_version == \"OOS15\"))"
+            A14+15|OOS14+15)
+              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\" or .os_version == \"OOS14\" or .os_version == \"OOS15\"))"
               ;;
-            OOS16)
-              jq_filter="map(select(.os_version == \"OOS16\"))"
+            A16|OOS16)
+              jq_filter="map(select(.os_version == \"A16\" or .os_version == \"OOS16\"))"
               ;;
-            OOS15)
-              jq_filter="map(select(.os_version == \"OOS15\"))"
+            A15|OOS15)
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"OOS15\"))"
               ;;
-            OOS14)
-              jq_filter="map(select(.os_version == \"OOS14\"))"
+            A14|OOS14)
+              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"OOS14\"))"
               ;;
             android*-*.*)
               # Extract android version and kernel version
