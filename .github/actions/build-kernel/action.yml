@@ -359,7 +359,7 @@ runs:
         KERNEL_PATCHES_DIR="$GITHUB_WORKSPACE/kernel_patches"
         SUSFS_DIR="$GITHUB_WORKSPACE/susfs4ksu"
         KSU_DIR="$KERNEL_PLATFORM_DIR/KernelSU"
-        ReSukiSU_DIR="$KERNEL_PLATFORM_DIR/KernelSU-Next"
+        ReSukiSU_DIR="$KERNEL_PLATFORM_DIR/KernelSU"
         mkdir -p "$ARTIFACTS_DIR"
         mkdir -p "$DEBUG_ARTIFACTS_DIR"
         
@@ -988,6 +988,15 @@ runs:
         cp "$SUSFS_FOLDER/kernel_patches/fs/"* "$COMMON_KERNEL_FOLDER/fs/"
         cp "$SUSFS_FOLDER/kernel_patches/include/linux/"* "$COMMON_KERNEL_FOLDER/include/linux/"
         
+        TARGET_KSU_DIR="$KSU_FOLDER"
+        if [ -d "$KERNEL_PLATFORM_FOLDER/KernelSU" ]; then
+          TARGET_KSU_DIR="$KERNEL_PLATFORM_FOLDER/KernelSU"
+        elif [ -d "$KERNEL_PLATFORM_FOLDER/ReSukiSU" ]; then
+          TARGET_KSU_DIR="$KERNEL_PLATFORM_FOLDER/ReSukiSU"
+        elif [ -d "$KERNEL_PLATFORM_FOLDER/KernelSU-Next" ]; then
+          TARGET_KSU_DIR="$KERNEL_PLATFORM_FOLDER/KernelSU-Next"
+        fi
+        
         susfs_version=$(grep '#define SUSFS_VERSION' "$COMMON_KERNEL_FOLDER/include/linux/susfs.h" | awk -F'"' '{print $2}')
         echo "SUSVER=$susfs_version" >> $GITHUB_ENV
         echo "$susfs_version" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
@@ -1013,13 +1022,13 @@ runs:
               patch -p1 --forward --fuzz=3 < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_selinux.c.patch"
               patch -p1 --forward --fuzz=3 < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_ksud.c.patch"
             else
-              cd "$KSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward --fuzz=3 < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
             fi
             ;;
           "v1.5.9"|"v1.5.10"|"v1.5.11"|"v1.5.12")
             if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
-              cd "$ReSukiSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
               for file in $(find ./kernel -maxdepth 2 -name "*.rej" -printf "%f\n" | cut -d'.' -f1); do
                 echo "Patching file: $file.c with fix_$file.c.patch"
@@ -1027,13 +1036,13 @@ runs:
               done
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_kernel_compat.c.patch"
             else
-              cd "$KSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
             fi
             ;;
           "v2.0.0")
             if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
-              cd "$ReSukiSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
               for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \;); do
                 echo "Patching file: $file with fix_$file.patch"
@@ -1052,13 +1061,13 @@ runs:
                 patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_sepolicy_fix.patch"
               fi
             else
-              cd "$KSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
             fi
             ;;
           "v2.1.0")
             if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
-              cd "$ReSukiSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
               for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \;); do
                 echo "Patching file: $file with fix_$file.patch"
@@ -1077,13 +1086,13 @@ runs:
                 patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_sepolicy_fix.patch"
               fi
             else
-              cd "$KSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
             fi
             ;;
           "v2.2.0")
             if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
-              cd "$ReSukiSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
               for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \;); do
                 echo "Patching file: $file with fix_$file.patch"
@@ -1094,7 +1103,7 @@ runs:
               echo "Patching KSU_TOOLKIT Support for SusFS kernel!"
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch"
             else
-              cd "$KSU_FOLDER"
+              cd "$TARGET_KSU_DIR"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
             fi
             ;;
