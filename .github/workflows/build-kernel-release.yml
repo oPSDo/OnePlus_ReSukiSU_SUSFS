@@ -1218,7 +1218,7 @@ jobs:
         run: |
           gh release create "${{ env.NEW_TAG }}" \
             --repo "${{ env.REPO_OWNER }}/${{ env.REPO_NAME }}" \
-            --title "${{ env.RELEASE_NAME }}" \
+            --title "${{ env.NEW_TAG }}" \
             --notes-file release_notes.md
 
       - name: 📤 Upload Release Assets Dynamically
