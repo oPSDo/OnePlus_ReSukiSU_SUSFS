@@ -1,4 +1,5 @@
-name: 'Build OnePlus Kernel with KernelSU Next'
+name: 'Build OnePlus Kernel with KernelSU / ReSukiSU'
+description: 'GitHub Action to build OnePlus kernels with original KernelSU or ReSukiSU, and SUSFS integration, optimized for performance and reliability'
 
 inputs:
   op_config_json:
@@ -12,6 +13,7 @@ inputs:
     options:
       - KSUN
       - KSU
+      - ReSukiSU
   ksu_branch_or_hash:
     description: 'KSU branch or commit hash (empty = auto-detect by ksu_type)'
     required: false
@@ -126,12 +128,19 @@ runs:
         android_version="$OP_ANDROID_VERSION"
         kernel_version="$OP_KERNEL_VERSION"
         os_version="$OP_OS_VERSION"
+        
+        # Convert OOS to A if present (e.g. OOS16 -> A16)
+        if [[ "$os_version" =~ ^OOS ]]; then
+          os_version="${os_version/OOS/A}"
+          echo "OP_OS_VERSION=$os_version" >> "$GITHUB_ENV"
+          export OP_OS_VERSION="$os_version"
+        fi
         hmbird="$OP_HMBIRD"
         susfs="$OP_SUSFS"
-        opt="$OP_OPT"
+        opt="${OP_OPT:-false}"
         bbg="$OP_BBG"
         bbr="$OP_BBR"
-        bbr3="$OP_BBR3"
+        bbr3="${OP_BBR3:-false}"
         ttl="$OP_TTL"
         ip_set="$OP_IP_SET"
         rust_build="$OP_RUST_BUILD"
@@ -283,8 +292,6 @@ runs:
         
         # OP_BINDGEN currently has no checks!
         
-        # OP_BLACKLIST_MODULES currently has no checks!
-        
         if [[ -z "$ds" ]]; then
           errors+=("Input 'ds' cannot be empty")
         elif [[ "$ds" != "true" && "$ds" != "false" ]]; then
@@ -336,7 +343,6 @@ runs:
         git config --global feature.manyFiles true
         git config --global core.fsmonitor true
         git config --global pack.sparse true
-        git config --global http.sslVerify false
 
     - name: Sync Kernel Source
       id: sync-kernel-source
@@ -683,6 +689,7 @@ runs:
     - name: Restore ccache cache
       id: restore-ccache-cache
       uses: ./action-source/.github/actions/cache/restore
+      continue-on-error: true
       if: ${{ inputs.clean == false || inputs.clean == 'false' }}
       with:
         cache_path: ${{ env.CCACHE_DIR }}
@@ -692,6 +699,20 @@ runs:
         restore_keys: |
           ${{ inputs.ksu_type }}-v3-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-${{ env.KERNEL_FULL_VER }}-
           ${{ inputs.ksu_type }}-v3-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-
+
+    - name: Restore LTO LD cache
+      id: restore-lto-ld-cache
+      uses: ./action-source/.github/actions/cache/restore
+      continue-on-error: true
+      if: ${{ (inputs.clean == false && env.OP_LTO != 'none') || (inputs.clean == 'false' && env.OP_LTO != 'none') }}
+      with:
+        cache_path: ${{ env.LDCACHE_DIR }}
+        cache_key: ${{ inputs.ksu_type }}-v3-LTO-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-${{ env.KERNEL_FULL_VER }}-${{ env.CLANG_VERSION_SHORT }}
+        cache_bucket: "lto-cache"
+        debug: ${{ inputs.debug }}
+        restore_keys: |
+          ${{ inputs.ksu_type }}-v3-LTO-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-${{ env.KERNEL_FULL_VER }}-
+          ${{ inputs.ksu_type }}-v3-LTO-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-
 
     - name: Check and Prepare Caches
       shell: bash
@@ -718,18 +739,16 @@ runs:
         fi
         
         ccache -z
-        rm -f "$CCACHE_DIR/ccache.log"
         
-        # Blacklist Risky files from ccache
-        sed -i '1i // CI_RUN_ID: ${{ github.run_id }}' "$COMMON_KERNEL_FOLDER/kernel/configs.c"
-        sed -i '1i // ccache:disable' "$COMMON_KERNEL_FOLDER/kernel/configs.c"
-
-        if head -n 1 "$COMMON_KERNEL_FOLDER/kernel/configs.c" | grep -q "// ccache:disable"; then
-            echo "Success: ccache is disabled for this file!"
+        # Setup and check LTO Cache
+        if [ -d "$LDCACHE_DIR" ] && find "$LDCACHE_DIR" -type f -print -quit 2>/dev/null | grep -q .; then
+          echo "✅ Restored LTO LD cache found"
+          
+          echo "Updating LTO cache atime for cache eviction..."
+          find ${{ env.LDCACHE_DIR }} -type f -exec touch -t $(date -d "1 day ago" +%Y%m%d%H%M) {} +
         else
-            echo "Error: Modification failed or line is missing."
+          echo "⚠️ No existing LTO cache - linker will generate new artifacts"
         fi
-
         echo "::endgroup::"
 
     - name: Fetch SusFS and Other Dependencies
@@ -938,6 +957,38 @@ runs:
         echo "KernelSU Next Version: $KSU_VERSION"
         echo "✅ KernelSU Next added (commit: ${KSU_COMMIT_SHA:0:8})"
         echo "::endgroup::"
+    - name: Add ReSukiSU (The Sukisaku Project)
+      shell: bash
+      if: ${{ inputs.ksu_type == 'ReSukiSU' }}
+      run: |
+        set -euo pipefail
+        echo "::group::Add ReSukiSU"
+        cd "$KERNEL_PLATFORM_FOLDER"
+        echo "Adding ReSukiSU..."
+        
+        if [ "${{ inputs.ksu_branch_or_hash }}" = "" ]; then
+          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -
+        else
+          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s "${{ inputs.ksu_branch_or_hash }}"
+        fi
+        
+        cd KernelSU
+        
+        BASE_VERSION=30700
+        KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" $BASE_VERSION)
+        
+        KSU_COMMIT_SHA=$(git rev-parse HEAD)
+        echo "KSU_COMMIT_SHA=$KSU_COMMIT_SHA" >> $GITHUB_ENV
+        
+        cd ..
+        
+        echo "ReSukiSU" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
+        echo "$KSU_VERSION" >> "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt"
+        echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+        
+        echo "ReSukiSU Version: $KSU_VERSION"
+        echo "✅ ReSukiSU added (commit: ${KSU_COMMIT_SHA:0:8})"
+        echo "::endgroup::" 
 
     - name: Add KernelSU
       shell: bash
@@ -1022,9 +1073,11 @@ runs:
               patch -p1 --forward --fuzz=3 < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_core_hook.c.patch"
               patch -p1 --forward --fuzz=3 < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_selinux.c.patch"
               patch -p1 --forward --fuzz=3 < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_ksud.c.patch"
-            else
+            elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
-              patch -p1 --forward --fuzz=3 < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
+              patch -p1 --forward --fuzz=3 < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
+            else
+              echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
           "v1.5.9"|"v1.5.10"|"v1.5.11"|"v1.5.12")
@@ -1036,9 +1089,11 @@ runs:
                 patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_$file.c.patch"
               done
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_kernel_compat.c.patch"
-            else
+            elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
-              patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
+              patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
+            else
+              echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
           "v2.0.0")
@@ -1061,9 +1116,11 @@ runs:
                 echo "Patching Multi-manager sepolicy Support for SusFS kernel!"
                 patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_sepolicy_fix.patch"
               fi
-            else
+            elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
+            else
+              echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
           "v2.1.0")
@@ -1086,9 +1143,11 @@ runs:
                 echo "Patching Multi-manager sepolicy Support for SusFS kernel!"
                 patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/multi_sepolicy_fix.patch"
               fi
-            else
+            elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
+            else
+              echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
           "v2.2.0")
@@ -1103,9 +1162,11 @@ runs:
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/overwrite_hook_mode.patch"
               echo "Patching KSU_TOOLKIT Support for SusFS kernel!"
               patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch"
-            else
+            elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
+            else
+              echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
           *)
@@ -1118,9 +1179,6 @@ runs:
         if [ "${{ env.ANDROID_VER }}" = "android15" ] && [ "${{ env.KERNEL_VER }}" = "6.6" ]; then
           if ! grep -qxF '#include <trace/hooks/fs.h>' ./fs/namespace.c; then
             sed -i '/#include <trace\/hooks\/blk.h>/a #include <trace\/hooks\/fs.h>' ./fs/namespace.c
-          fi
-          if ! grep -qxF 'extern void __fold_filemap_fixup_entry(struct vma_iterator *iter, unsigned long *end);' ./include/linux/page_size_compat.h; then
-            patch -p1 < "$KERNEL_PATCHES_FOLDER/common/backports/fold_fixup_entries.patch"
           fi
         fi
         
@@ -1145,7 +1203,7 @@ runs:
           fi
           
           if grep -qF 'if (vma->vm_end > last_vma_end)' ./fs/proc/task_mmu.c && ! grep -qxF 'SUSFS_IS_INODE_SUS_MAP' ./fs/proc/task_mmu.c; then
-            echo "Temporarily expand the last_vma_end if block to fix a matching issue."
+            echo "Temporarily expand the `last_vma_end` `if` block to fix a matching issue."
             perl -i -0pe 's/\t\t\tif \(vma->vm_end > last_vma_end\)\n\t\t\t\tsmap_gather_stats\(vma, &mss, last_vma_end\);/\t\t\tif (vma->vm_end > last_vma_end) {\n\t\t\t\tsmap_gather_stats(vma, \&mss, last_vma_end);\n\t\t\t\tlast_vma_end = vma->vm_end;\n\t\t\t}/' ./fs/proc/task_mmu.c
             fake_patched_expand=1
           fi
@@ -1182,18 +1240,6 @@ runs:
         fi
         
         patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/50_add_susfs_in_${{ env.SUSFS_KERNEL_BRANCH }}.patch"
-        
-        # SUSFS's OPEN_REDIRECT code unconditionally calls VMA_PAD_START(), which
-        # only exists on GKI branches that carry Google's page-size-migration
-        # feature (added to each android version's kernel/common branch at a
-        # different, sometime later, os_patch_level). Older os_patch_levels in
-        # our build matrix predate it, so fall back to a no-padding definition
-        # when the real header/macro isn't present. This is version-agnostic and
-        # a no-op wherever the real header already provides it.
-        if grep -q 'VMA_PAD_START(' ./fs/proc/task_mmu.c && ! grep -qE '#include <linux/pgsize_migration(_inline)?\.h>|define VMA_PAD_START' ./fs/proc/task_mmu.c; then
-          sed -i '\|#include "internal.h"|a\\n#undef VMA_PAD_START\n#ifndef VMA_PAD_START\n#define VMA_PAD_START(vma) ((vma)->vm_end)\n#endif' fs/proc/task_mmu.c
-          echo "Added VMA_PAD_START fallback definition to fs/proc/task_mmu.c"
-        fi
         
         # Revert Fake kernel patch
         if [ "$fake_patched_expand" = 1 ]; then
@@ -1274,12 +1320,14 @@ runs:
         echo "CONFIG_BBG=y" >> common/arch/arm64/configs/gki_defconfig
         sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/selinux/selinux,baseband_guard/ } }' common/security/Kconfig
         
-        case "$OP_BRANCH" in
-          wild/sm8850|wild/sm8845)
-            echo "Applying BBG efisp abl whitelist patch"
-            patch -p1 < "$KERNEL_PATCHES_FOLDER/common/bbg/0001-Enable-abl-and-efisp-flashing-for-efisp-exploit-devices.patch"
-          ;;
-        esac
+        if grep -qxF $'\t\tconst char* symlink_target_link = inode->i_op->get_link(dentry, inode, NULL);' ./Baseband-guard/baseband_guard.c; then
+          echo "Applying BBG get_link fix"
+          if ! patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/experimental/bbg/bbg_fix_get_link.patch"; then
+            echo "::error::BBG get_link patch failed. Dumping all .rej files:"
+            find . -name "*.rej" -exec echo "=== {} ===" \; -exec cat {} \;
+            exit 1
+          fi
+        fi
         
         echo "✅ BBG LSM added"
         echo "::endgroup::"
@@ -1314,13 +1362,22 @@ runs:
           echo "Patching hmbird!"
           HMBIRD_MODEL=$(echo "$OP_MODEL" | sed 's/-[0-9]\+\.[0-9]\+\.[0-9]\+$//')
           case "$OP_MODEL" in
-            OP-ACE-5-ULTRA-6.6.50|OP-ACE-5-PRO-6.6.30|OP13-6.6.30|OP13-CPH-6.6.56|OP13T-6.6.89|OP13-6.6.89|OP-ACE-5-PRO-6.6.89|OP-PAD-2-PRO-6.6.89|OP-PAD-3-SM8750-6.6.89|OP-ACE-5-ULTRA-6.6.89|OP-ACE-6-6.6.89)
+            OP-ACE-5-ULTRA-6.6.50|OP-ACE-5-PRO-6.6.30|OP13-6.6.30|OP13-CPH-6.6.56)
               FENGCHI_DIR="$KERNEL_PATCHES_FOLDER/oneplus/hmbird/deprecated" ;;
             *)
               FENGCHI_DIR="$KERNEL_PATCHES_FOLDER/oneplus/hmbird" ;;
           esac
-          dos2unix "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${OP_OS_VERSION}.patch"
-          patch -p1 -F 3 < "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${OP_OS_VERSION}.patch"
+          # Upstream WildKernels/kernel_patches names fengchi patches with the
+          # A14/A15/A16 OS convention (e.g. fengchi_OP13T_A16.patch). This fork
+          # keeps OOS naming everywhere else, so translate OOS<NN> -> A<NN> only
+          # for the fengchi filename lookup against the upstream patches repo.
+          HMBIRD_OS="${OP_OS_VERSION/OOS/A}"
+          dos2unix "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"
+          if ! patch -p1 --fuzz=2 < "$FENGCHI_DIR/fengchi_${HMBIRD_MODEL}_${HMBIRD_OS}.patch"; then
+            echo "::warning::hmbird fengchi patch did not apply cleanly. Continuing without it."
+            find . -name "*.rej" -exec echo "=== {} ===" \; -exec cat {} \;
+            find . -name "*.rej" -delete 2>/dev/null || true
+          fi
           dos2unix "$KERNEL_PATCHES_FOLDER/oneplus/hmbird/overwriter.patch"
           patch -p1 -F 3 < "$KERNEL_PATCHES_FOLDER/oneplus/hmbird/overwriter.patch"
           chmod +x ./drivers/of/overwriter/overwrite_configs/convert_configs.sh
@@ -1344,7 +1401,7 @@ runs:
         declare -A selected_file=()
         declare -A selected_priority=()
         selected_count=0
-        
+
         # Define suffixes in order of priority (1 to 7)
         suffixes=(
           "_${OP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}.ko"
@@ -1360,7 +1417,7 @@ runs:
           filename="${file##*/}"
           module_name=""
           priority=0
-          
+
           exact_module_name=$(modinfo -F name "$file" 2>/dev/null)
 
           # Evaluate priorities by iterating through the ordered suffixes
@@ -1374,11 +1431,11 @@ runs:
                 module_name="$extracted_name"
                 priority=$((i + 1))
               fi
-              
+
               break # Match found, stop checking lower priorities
             fi
           done
-          
+
           # File did not match any supported naming pattern.
           [[ -n "$module_name" ]] || continue
 
@@ -1397,7 +1454,7 @@ runs:
         if (( selected_count == 0 )); then
           echo "No matching kernel modules found."
         fi
-        
+
         for module_name in "${!selected_file[@]}"; do
           file="${selected_file[$module_name]}"
           priority="${selected_priority[$module_name]}"
@@ -1409,11 +1466,11 @@ runs:
           elif [ -d "$COMMON_KERNEL_FOLDER/kernel/module_overlay/modules/" ]; then
             dest_path="$COMMON_KERNEL_FOLDER/kernel/module_overlay/modules/${module_name}.ko"
           fi
-          
-          if [ -z "$dest_path" ]; then
+
+          if [ -n "$dest_path" ]; then
             cp -v -- "$file" "$dest_path"
           fi
-          
+
           if [ -z "$copied_modules" ]; then
             copied_modules="$dest_path"
           else
@@ -1425,6 +1482,7 @@ runs:
         
         echo "✅ Other patches applied"
         echo "::endgroup::"
+
 
     - name: Apply Optimisation Patches
       if: ${{ env.OP_OPT == 'true' }}
@@ -1450,9 +1508,7 @@ runs:
         fi
         patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/minimise_wakeup_time.patch"
         patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/int_sqrt.patch"
-        if [ "$OP_BBR" = "false" ] && [ "$OP_BBR3" = "false" ]; then
-          patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/force_tcp_nodelay.patch"
-        fi
+        patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/force_tcp_nodelay.patch"
         patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/reduce_gc_thread_sleep_time.patch"
         patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/add_timeout_wakelocks_globally.patch"
         patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/common/f2fs_reduce_congestion.patch"
@@ -1508,7 +1564,8 @@ runs:
           OP10r|OP-ACE-2-5.10.209|OP-ACE-2V-5.10.209|OP-PAD-MT6983-5.10.209|\
           OP10pro-5.10.209|OP10t-5.10.209|OP-ACE-5.10.209|OP11r-5.10.209|\
           OP-NORD-3-5.10.209|OP-ACE-RACE-5.10.209)
-            if [[ "$OP_OS_VERSION" == "A15" ]]; then
+            if [[ "$OP_OS_VERSION" == "OOS15" ]]; then
+              # Upstream names this compat patch with the A-OS convention (_A14).
               NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_android12-5.10_A14.patch"
             fi
             ;;
@@ -1518,8 +1575,8 @@ runs:
             echo "::error::NTSync compat patch not found for ${OP_MODEL}: $(basename $NTSYNC_PATCH)"
             exit 1
           fi
-        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch" ]; then
-          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION}.patch"
+        elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch" ]; then
+          NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}_${OP_OS_VERSION/OOS/A}.patch"
         elif [ -f "$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch" ]; then
           NTSYNC_PATCH="$NTSYNC_FOLDER/ntsync_compat_${GKI_KEY}.patch"
         else
@@ -1713,6 +1770,8 @@ runs:
         CONFIG_USER_NS=y
         EOF
         
+        patch -p1 < "$KERNEL_PATCHES_FOLDER/common/droidspaces/0001-Guard-USER_NS-for-non-root-users.patch"
+        
         if [ "${{ env.OP_RUST_BUILD }}" = "true" ]; then
           echo "Add IPC NS missing symbols for rust binder"
           if ! grep -q 'EXPORT_SYMBOL.*put_ipc_ns' "$COMMON_KERNEL_FOLDER/ipc/namespace.c"; then
@@ -1803,7 +1862,7 @@ runs:
         
         CONFIG_STRING="${OPTIONS[*]}"
         echo "CONFIG_FAKE_DISABLE=${CONFIG_STRING}" >> $GITHUB_ENV
-    
+
     - name: Disable Vendor / Kernel Modules
       shell: bash
       run: |
@@ -1838,7 +1897,7 @@ runs:
           for risky in "${RISKY_MODULES[@]}"; do
             if [ "$mod" = "$risky" ]; then
               is_risky=true
-              echo "⚠️ WARNING: Blocked attempt to blacklist protected module: $mod"
+              echo "WARNING: Blocked attempt to blacklist protected module: $mod"
               break
             fi
           done
@@ -1867,7 +1926,7 @@ runs:
         else
           patch -p1 < "$KERNEL_PATCHES_FOLDER/common/vendor_modules/0001-Support-conditional-vendor-modules-blacklisting-6.1-and-above.patch"
         fi
-        
+
     - name: Build Kernel
       id: build_kernel_step
       shell: bash
@@ -1935,7 +1994,7 @@ runs:
         if [ "${{ inputs.clean }}" = "false" ]; then
           echo "🚀 ccache-accelerated build"
         else
-          echo "🧹 Clean build mode"
+          echo "≡ƒº╣ Clean build mode"
         fi
         
         OUT=out
@@ -1963,7 +2022,7 @@ runs:
         
         make LD="$COMMON_KERNEL_FOLDER/ld-wrapper" HOSTLD="$COMMON_KERNEL_FOLDER/ld-wrapper" O="$OUT" gki_defconfig
         
-        LOCAL_LOCALVERSION="${CUSTOM_LOCALVERSION:--OP-WILD}"
+        LOCAL_LOCALVERSION="${CUSTOM_LOCALVERSION:--OP-RESUKISU}"
         if [ -n "${LOCAL_LOCALVERSION:-}" ]; then
           scripts/config --file "$OUT/.config" --set-str LOCALVERSION "${LOCAL_LOCALVERSION}"
           scripts/config --file "$OUT/.config" -d LOCALVERSION_AUTO || true
@@ -2091,14 +2150,15 @@ runs:
         echo "Clear Temporary cache files..."
         ccache -c
         
-        echo "Perform ccache eviction!"
-        # 0.5 days = 12 Hrs. Delete cache unused in 12 hrs. 12 hrs is considered for safety.
-        # Yes. ccache uses mtime as a store of time due to cross compatibility with different OS.
-        find "$CCACHE_DIR" -type f -mtime +0.5 -delete
-        # Remove empty layout subdirectories
-        find "$CCACHE_DIR" -type d -empty -delete
-
-        cp "${{ env.CCACHE_LOGFILE }}" "$CCACHE_DIR"
+        # 3h = 10800s using seconds to support older ccache
+        ccache --evict-older-than 10800s
+        
+        echo "Perform LTO cache eviction!"
+        if [ -d "$LDCACHE_DIR" ]; then
+          # Delete LTO cache files modified more than 180 minutes (3 hours) ago
+          find "$LDCACHE_DIR" -type f -amin +180 -delete
+          find "$LDCACHE_DIR" -type d -empty -delete
+        fi
         
         if [ "${{ inputs.debug }}" == "true" ]; then
           if [ -f "${{ env.CCACHE_LOGFILE }}" ]; then
@@ -2108,7 +2168,7 @@ runs:
             mv "${{ env.CCACHE_LOGFILE }}" "$LOG_DIR/$NEW_LOG_NAME"
             echo "CCACHE_LOGFILE=$LOG_DIR/$NEW_LOG_NAME" >> $GITHUB_ENV
           else
-            echo "⚠ ccache log not found, skipping rename."
+            echo "⚠️ ccache log not found, skipping rename."
           fi
         fi
         
@@ -2240,6 +2300,12 @@ runs:
         esac
         
         ZIP_MODEL=$(echo "$OP_MODEL" | sed 's/-[0-9]\+\.[0-9]\+\.[0-9]\+$//')
+        if [ "$ZIP_MODEL" = "OP11" ]; then
+          ZIP_MODEL="X6P"
+        fi
+        if [ "$ZIP_MODEL" = "OP12" ]; then
+          ZIP_MODEL="X7U"
+        fi
         if [ "${{ env.OP_SUSFS }}" = true ]; then
           ZIP_NAME="AK3_${ZIP_MODEL}_${OP_OS_VERSION}_${KERNEL_FULL_VER}_${{ inputs.ksu_type }}_${KSUVER:-unknown}_SuSFS_${SUSVER:-unknown}.zip"
         else
@@ -2293,7 +2359,10 @@ runs:
           echo "Kernel Uname: ${{ env.KERNEL_UNAME }}"
           echo "Build User: ${{ env.BUILD_USER }}"
           echo "Build Host: ${{ env.BUILD_HOST }}"
-          if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
+          if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
+            echo "ReSukiSU Version: ${KSUVER:-unknown}"
+            echo "ReSukiSU commit SHA: ${KSU_SHA:-unknown}"
+          elif [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
             echo "KSUN Version: ${KSUVER:-unknown}"
             echo "KSUN commit SHA: ${KSU_SHA:-unknown}"
           else
@@ -2344,14 +2413,18 @@ runs:
           echo "| **Kernel Uname** | \`${{ env.KERNEL_UNAME }}\` |"
           echo "| **Build User** | ${{ env.BUILD_USER }} |"
           echo "| **Build Host** | ${{ env.BUILD_HOST }} |"
-          if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
+          if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
+            echo "| **ReSukiSU Version** | ${KSUVER:-unknown} |"
+          elif [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
             echo "| **KSUN Version** | ${KSUVER:-unknown} |"
           else
             echo "| **KSU Version** | ${KSUVER:-unknown} |"
           fi
           
           if [ "$KSU_SHA" != "unknown" ]; then
-            if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
+            if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
+              echo "| **ReSukiSU Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/ReSukiSU/ReSukiSU/commit/$KSU_SHA) |"
+            elif [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
               echo "| **KSUN Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/KernelSU-Next/KernelSU-Next/commit/$KSU_SHA) |"
             else
               echo "| **KSU Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/tiann/KernelSU/commit/$KSU_SHA) |"
@@ -2450,6 +2523,17 @@ runs:
         cache_path: ${{ env.CCACHE_DIR }}
         cache_key: ${{ inputs.ksu_type }}-v3-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-${{ env.KERNEL_FULL_VER }}-${{ env.CLANG_VERSION_SHORT }}
         cache_bucket: "ccache-cache"
+        debug: ${{ inputs.debug }}
+        github_token: ${{ inputs.github_token }}
+        working_dir: "./main-source"
+        compression_level: 6
+    - name: Save LTO LD cache
+      if: always() && ${{ env.OP_LTO != 'none' }} && steps.build_kernel_step.conclusion == 'success'
+      uses: ./action-source/.github/actions/cache/save
+      with:
+        cache_path: ${{ env.LDCACHE_DIR }}
+        cache_key: ${{ inputs.ksu_type }}-v3-LTO-${{ env.OP_MODEL }}-${{ env.OP_OS_VERSION }}-${{ env.KERNEL_FULL_VER }}-${{ env.CLANG_VERSION_SHORT }}
+        cache_bucket: "lto-cache"
         debug: ${{ inputs.debug }}
         github_token: ${{ inputs.github_token }}
         working_dir: "./main-source"
