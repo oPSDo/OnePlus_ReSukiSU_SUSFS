@@ -29,6 +29,11 @@ on:
           - android13-5.15
           - android12-5.10
         default: A16
+      config_path:
+        description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/a16/OP11.json)'
+        required: false
+        type: string
+        default: ''
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -119,11 +124,21 @@ jobs:
           echo "::group::Matrix generation"
           
           input="${{ inputs.op_model }}"
+          config_path="${{ inputs.config_path }}"
           ksu_type="${{ inputs.ksu_type }}"
           ksu_hash="${{ inputs.ksu_branch_or_hash }}"
           
           echo "[" > matrix.json
-          mapfile -t all_json_files < <(find configs/ -name "*.json" -print0 | xargs -0 -n1)
+          if [ -n "$config_path" ]; then
+            if [[ ("$config_path" != configs/*.json && "$config_path" != configs/*/*.json) || "$config_path" == *".."* || ! -f "$config_path" ]]; then
+              echo "::error::Invalid config_path '$config_path'; expected an existing configs/*.json file"
+              exit 1
+            fi
+            all_json_files=("$config_path")
+            echo "Single-device validation config: $config_path"
+          else
+            mapfile -t all_json_files < <(find configs/ -name "*.json" -print0 | xargs -0 -n1)
+          fi
           for i in "${!all_json_files[@]}"; do
             file="${all_json_files[$i]}"
             if [ -f "$file" ]; then
@@ -136,9 +151,11 @@ jobs:
           done
           echo "]" >> matrix.json
           
-          jq_filter="."
-          
-          case "$input" in
+          if [ -n "$config_path" ]; then
+            jq_filter="."
+          else
+            jq_filter="."
+            case "$input" in
             A14+15+16)
               ;;
             A15+16)
@@ -171,6 +188,7 @@ jobs:
               jq_filter="map(select(false))"
               ;;
           esac
+          fi
           
           filtered=$(jq -c "$jq_filter" matrix.json)
           count=$(jq 'length' <<<"$filtered")
@@ -880,6 +898,12 @@ jobs:
           path: ./downloaded-artifacts
           merge-multiple: true
           skip-decompress: true
+
+      - name: 🧹 Exclude ccache binary from release staging
+        run: |
+          find ./downloaded-artifacts -maxdepth 2 -type f -name ccache -delete
+          rm -rf ./downloaded-artifacts/ccache-binary
+          echo "✅ ccache binary excluded from release staging"
 
       - name: 📝 Generate Device List and Final Release Notes
         id: generate-notes
