@@ -1151,18 +1151,28 @@ runs:
               echo "ℹ️ Skipping KernelSU folder patch for ReSukiSU"
             fi
             ;;
-          "v2.2.0")
+          "v2.2.0"|"v2.3.0"|v2.*)
             if [ "${{ inputs.ksu_type }}" = "KSUN" ]; then
               cd "$KSUN_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
-              for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \;); do
+              susfs_fix_dir="$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version"
+              if [ ! -d "$susfs_fix_dir" ]; then
+                susfs_fix_dir="$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/v2.2.0"
+              fi
+              for file in $(find ./kernel -maxdepth 2 -name "*.rej" -exec basename {} .rej \; 2>/dev/null); do
                 echo "Patching file: $file with fix_$file.patch"
-                patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/fix_$file.patch"
+                if [ -f "$susfs_fix_dir/fix_$file.patch" ]; then
+                  patch -p1 --forward < "$susfs_fix_dir/fix_$file.patch" || true
+                fi
               done
               echo "Patching Hook Mode!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/overwrite_hook_mode.patch"
+              if [ -f "$susfs_fix_dir/overwrite_hook_mode.patch" ]; then
+                patch -p1 --forward < "$susfs_fix_dir/overwrite_hook_mode.patch" || true
+              fi
               echo "Patching KSU_TOOLKIT Support for SusFS kernel!"
-              patch -p1 --forward < "$KERNEL_PATCHES_FOLDER/next/susfs_fix_patches/$susfs_version/ksu_toolkit.patch"
+              if [ -f "$susfs_fix_dir/ksu_toolkit.patch" ]; then
+                patch -p1 --forward < "$susfs_fix_dir/ksu_toolkit.patch" || true
+              fi
             elif [ "${{ inputs.ksu_type }}" = "KSU" ]; then
               cd "$KSU_FOLDER"
               patch -p1 --forward < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch" || true
