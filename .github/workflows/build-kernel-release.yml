@@ -33,7 +33,7 @@ on:
         description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/a16/OP11.json)'
         required: false
         type: string
-        default: ''
+        default: 'configs/a16/OP12.json'
       ksu_type:
         description: 'Select KSU Type'
         required: true
