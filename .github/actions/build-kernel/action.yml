@@ -812,7 +812,11 @@ runs:
           
           local download_url=""
           if [[ "$url" == *"github.com"* ]]; then
-              download_url="${url%.git}/archive/refs/heads/${branch}.tar.gz"
+              if [[ "$branch" =~ ^[0-9a-fA-F]{40}$ ]]; then
+                  download_url="${url%.git}/archive/${branch}.tar.gz"
+              else
+                  download_url="${url%.git}/archive/refs/heads/${branch}.tar.gz"
+              fi
           elif [[ "$url" == *"gitlab.com"* ]]; then
               download_url="${url%.git}/-/archive/${branch}/${repo_name}-${branch}.tar.gz"
           else
@@ -823,9 +827,11 @@ runs:
           while [ $attempt -le $max_attempts ]; do
               echo " Attempt $attempt/$max_attempts: High-speed fetch for $repo_name ($branch)"
               
-              if aria2c -x16 -s16 -j16 -k1M --retry-wait=2 --max-tries=5 -d "/dev/shm" -o "$archive_name" --allow-overwrite=true "${aria2_headers[@]}" $aria_log_flags "$download_url"; then
+              if aria2c -x4 -s4 -j4 -k1M --retry-wait=2 --max-tries=3 --connect-timeout=15 --timeout=30 -d "/dev/shm" -o "$archive_name" --allow-overwrite=true "${aria2_headers[@]}" $aria_log_flags "$download_url" 2>/dev/null || \
+                 curl -sSL --fail --retry 3 --connect-timeout 15 -m 60 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -o "$shm_path" "$download_url" 2>/dev/null; then
                   mkdir -p "$repo_name"
-                  if tar -I "pigz -p $nproc -b 256" -x --record-size=1M -f "$shm_path" -C "$repo_name" --strip-components=1 --no-same-owner; then
+                  if tar -I "pigz -p $nproc -b 256" -x --record-size=1M -f "$shm_path" -C "$repo_name" --strip-components=1 --no-same-owner 2>/dev/null || \
+                     tar -xzf "$shm_path" -C "$repo_name" --strip-components=1 --no-same-owner 2>/dev/null; then
                       echo "✅ Success: $repo_name synced"
                       rm -f "$shm_path"
                       return 0
@@ -834,9 +840,23 @@ runs:
               
               echo "⚠️ Attempt $attempt failed, clearing RAM and retrying..."
               rm -rf "$repo_name" "$shm_path" 2>/dev/null
-              sleep 5
+              sleep 3
               attempt=$((attempt + 1))
           done
+          
+          echo "⚠️ High-speed fetch failed, falling back to git clone for $repo_name..."
+          rm -rf "$repo_name" "$shm_path" 2>/dev/null || true
+          if [[ "$branch" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              if git clone "$url" "$repo_name" 2>/dev/null && (cd "$repo_name" && git checkout "$branch" 2>/dev/null); then
+                  echo "✅ Success: $repo_name synced via git checkout"
+                  return 0
+              fi
+          else
+              if git clone --depth 1 --branch "$branch" "$url" "$repo_name" 2>/dev/null; then
+                  echo "✅ Success: $repo_name synced via git clone"
+                  return 0
+              fi
+          fi
           
           echo "::error::All attempts failed for $url"
           return 1
@@ -1270,6 +1290,15 @@ runs:
         if grep -q 'VMA_PAD_START(' ./fs/proc/task_mmu.c && ! grep -qE '#include <linux/pgsize_migration(_inline)?\.h>|define VMA_PAD_START' ./fs/proc/task_mmu.c; then
           sed -i '\|#include "internal.h"|a\\n#undef VMA_PAD_START\n#ifndef VMA_PAD_START\n#define VMA_PAD_START(vma) ((vma)->vm_end)\n#endif' fs/proc/task_mmu.c
           echo "Added VMA_PAD_START fallback definition to fs/proc/task_mmu.c"
+        fi
+
+        if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
+          exec_file="./fs/exec.c"
+          sed -i '/extern int ksu_install_su_fd(void);/d; /^[[:space:]]*ksu_install_su_fd();$/d' "$exec_file"
+          if grep -Fq 'ksu_install_su_fd' "$exec_file"; then
+            echo "::error::Failed to remove unsupported ReSukiSU ksu_install_su_fd() call"
+            exit 1
+          fi
         fi
 
         # SUSFS targets the newer four-argument API, while some OnePlus 5.10
