@@ -87,7 +87,7 @@ Flashing this kernel will not void your warranty, but there is always a risk of 
 ## 📋 Installation Instructions
 
 - **KernelSU**: Developed by [tiann](https://github.com/tiann/KernelSU).
-- **ReSukiSU**: Developed by [ReSukiSU Team](https://github.com/ReSukiSU/ReSukiSU)
+- **ReSukiSU / BakaSU**: Developed by [Baka-SU Team](https://github.com/Baka-SU/BakaSU)
 - **Magic-KSU**: Developed by [5ec1cff](https://github.com/5ec1cff/KernelSU).  
 - **SUSFS**: Developed by [simonpunk](https://gitlab.com/simonpunk/susfs4ksu.git).
 - **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15).
@@ -110,7 +110,7 @@ You can also find Installation instructions in the release notes.
 | 🔧 **Project** | 👨‍💻 **Developer** | 🔗 **Link** |
 |:---------------:|:----------------:|:-----------:|
 | **KernelSU** | tiann | [![GitHub](https://img.shields.io/badge/GitHub-tiann-blue?style=flat-square&logo=github)](https://github.com/tiann/KernelSU) |
-| **ReSukiSU** | resukisu | [![GitHub](https://img.shields.io/badge/GitHub-resukisu-blue?style=flat-square&logo=github)](https://github.com/ReSukiSU/ReSukiSU) |
+| **ReSukiSU / BakaSU** | Baka-SU | [![GitHub](https://img.shields.io/badge/GitHub-Baka--SU-blue?style=flat-square&logo=github)](https://github.com/Baka-SU/BakaSU) |
 | **Magic-KSU** | 5ec1cff | [![GitHub](https://img.shields.io/badge/GitHub-5ec1cff-blue?style=flat-square&logo=github)](https://github.com/5ec1cff/KernelSU) |
 | **SUSFS** | simonpunk | [![GitLab](https://img.shields.io/badge/GitLab-simonpunk-orange?style=flat-square&logo=gitlab)](https://gitlab.com/simonpunk/susfs4ksu.git) |
 | **SUSFS Module** | sidex15 | [![GitHub](https://img.shields.io/badge/GitHub-sidex15-blue?style=flat-square&logo=github)](https://github.com/sidex15) |

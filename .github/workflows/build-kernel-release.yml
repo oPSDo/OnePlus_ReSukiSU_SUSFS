@@ -224,8 +224,8 @@ jobs:
           ksu_ref="${{ inputs.ksu_branch_or_hash }}"
           
           if [ "$ksu_type" == "ReSukiSU" ]; then
-            KSU_REPO_OWNER="ReSukiSU"
-            KSU_REPO_NAME="ReSukiSU"
+            KSU_REPO_OWNER="Baka-SU"
+            KSU_REPO_NAME="BakaSU"
           else
             KSU_REPO_OWNER="tiann"
             KSU_REPO_NAME="KernelSU"

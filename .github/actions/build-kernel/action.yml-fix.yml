@@ -964,9 +964,9 @@ runs:
         echo "Adding ReSukiSU..."
         
         if [ "${{ inputs.ksu_branch_or_hash }}" = "" ]; then
-          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -
+          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -
         else
-          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash -s "${{ inputs.ksu_branch_or_hash }}"
+          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -s "${{ inputs.ksu_branch_or_hash }}"
         fi
         
         cd KernelSU
@@ -2596,7 +2596,7 @@ runs:
           
           if [ "$KSU_SHA" != "unknown" ]; then
             if [ "${{ inputs.ksu_type }}" = "ReSukiSU" ]; then
-              echo "| **ReSukiSU Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/ReSukiSU/ReSukiSU/commit/$KSU_SHA) |"
+              echo "| **ReSukiSU Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/Baka-SU/BakaSU/commit/$KSU_SHA) |"
             else
               echo "| **KSU Commit** | [\`${KSU_SHA:0:8}\`](https://github.com/tiann/KernelSU/commit/$KSU_SHA) |"
             fi
