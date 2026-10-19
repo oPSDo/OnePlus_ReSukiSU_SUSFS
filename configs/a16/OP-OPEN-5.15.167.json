@@ -5,7 +5,7 @@
   "manifest": "oneplus_open_5.15.167_w.xml",
   "android_version": "android13",
   "kernel_version": "5.15",
-  "os_version": "OOS16",
+  "os_version": "A16",
   "lto": "thin",
   "zyc_compiler": "",
   "c_compiler": "kernel_platform/prebuilts/clang/host/linux-x86/clang-r450784e/bin",

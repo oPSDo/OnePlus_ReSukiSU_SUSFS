@@ -5,7 +5,7 @@
   "manifest": "oneplus_pad2_mt6991_w.xml",
   "android_version": "android15",
   "kernel_version": "6.6",
-  "os_version": "OOS16",
+  "os_version": "A16",
   "lto": "thin",
   "zyc_compiler": "",
   "c_compiler": "kernel_platform/prebuilts/clang/host/linux-x86/clang-r510928/bin",

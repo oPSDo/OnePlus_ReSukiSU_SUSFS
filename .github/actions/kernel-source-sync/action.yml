@@ -25,7 +25,17 @@ runs:
         if [[ "$OP_MANIFEST" == https://* ]]; then
           curl --fail --show-error --location --proto '=https' "$OP_MANIFEST" -o manifest.xml
         elif [[ "$OP_BRANCH" == wild/* ]]; then
-          cp "../manifests/$(echo "$OP_OS_VERSION" | tr '[:upper:]' '[:lower:]')/$OP_MANIFEST" manifest.xml
+          os_dir="$(echo "$OP_OS_VERSION" | tr '[:upper:]' '[:lower:]')"
+          if [ -f "../manifests/$os_dir/$OP_MANIFEST" ]; then
+            cp "../manifests/$os_dir/$OP_MANIFEST" manifest.xml
+          elif [ -f "../manifests/${os_dir/#oos/a}/$OP_MANIFEST" ]; then
+            cp "../manifests/${os_dir/#oos/a}/$OP_MANIFEST" manifest.xml
+          elif [ -f "../manifests/${os_dir/#a/oos}/$OP_MANIFEST" ]; then
+            cp "../manifests/${os_dir/#a/oos}/$OP_MANIFEST" manifest.xml
+          else
+            echo "::error::Manifest $OP_MANIFEST not found in ../manifests/$os_dir or fallback directories"
+            exit 1
+          fi
         else
           curl --fail --show-error --location --proto '=https' "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/$OP_BRANCH/$OP_MANIFEST" -o manifest.xml
         fi
