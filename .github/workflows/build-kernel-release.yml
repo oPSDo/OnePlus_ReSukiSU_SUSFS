@@ -17,18 +17,18 @@ on:
         required: true
         type: choice
         options:
-          - A14+15+16
-          - A15+16
-          - A14+15
-          - A16
-          - A15
-          - A14
+          - OOS14+15+16
+          - OOS15+16
+          - OOS14+15
+          - OOS16
+          - OOS15
+          - OOS14
           - android16-6.12
           - android15-6.6
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: A16
+        default: OOS16
       config_path:
         description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/oos16/OP11.json)'
         required: false
@@ -142,8 +142,7 @@ jobs:
           for i in "${!all_json_files[@]}"; do
             file="${all_json_files[$i]}"
             if [ -f "$file" ]; then
-              # Convert OOS to A (e.g. A16 -> A16) on the fly
-              jq -r '.os_version |= sub("OOS"; "A")' "$file" >> matrix.json
+              jq -r '.' "$file" >> matrix.json
               if [ $((i+1)) -lt ${#all_json_files[@]} ]; then
                 echo "," >> matrix.json
               fi
@@ -156,32 +155,32 @@ jobs:
           else
             jq_filter="."
             case "$input" in
-            A14+15+16)
+            OOS14+15+16)
               ;;
-            A15+16)
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\"))"
+            OOS15+16)
+              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\"))"
               ;;
-            A14+15)
-              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\"))"
+            OOS14+15)
+              jq_filter="map(select(.os_version == \"OOS14\" or .os_version == \"OOS15\"))"
               ;;
-            A16)
-              jq_filter="map(select(.os_version == \"A16\"))"
+            OOS16)
+              jq_filter="map(select(.os_version == \"OOS16\"))"
               ;;
-            A15)
-              jq_filter="map(select(.os_version == \"A15\"))"
+            OOS15)
+              jq_filter="map(select(.os_version == \"OOS15\"))"
               ;;
-            A14)
-              jq_filter="map(select(.os_version == \"A14\"))"
+            OOS14)
+              jq_filter="map(select(.os_version == \"OOS14\"))"
               ;;
             android*-*.*)
               # Extract android version and kernel version
               IFS='-' read -r av kv <<< "$input"
               
-              # Build android*-* only for A15 and A16
-              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
+              # Build android*-* only for OOS15 and OOS16
+              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
               
               echo "ℹ️  Android-Kernel filter applied: $av-$kv"
-              echo "   Restricted to: A15 and A16 only"
+              echo "   Restricted to: OOS15 and OOS16 only"
               ;;
             *)
               echo "::warning::Unknown input '$input'. Using empty filter."
@@ -195,7 +194,7 @@ jobs:
           
           filtered=$(echo "$filtered" | jq '
             sort_by(
-              (.os_version | gsub("A"; "") | tonumber) * -1,
+              (.os_version | gsub("OOS"; "") | tonumber) * -1,
               .model
             )
           ')
@@ -430,7 +429,7 @@ jobs:
           
           merged_matrix=$(echo "$merged_matrix" | jq '
             sort_by(
-              (.os_version | gsub("A"; "") | tonumber? // 0) * -1,
+              (.os_version | gsub("OOS"; "") | tonumber? // 0) * -1,
               .model
             )
           ')
@@ -537,7 +536,7 @@ jobs:
           # Add OOS restriction note for android-kernel filters
           if [[ "${{ inputs.op_model }}" == android*-*.* ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> **⚠️ Android-Kernel Filter:** Only A15 and A16 devices will be built for \`${{ inputs.op_model }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "> **⚠️ Android-Kernel Filter:** Only OOS15 and OOS16 devices will be built for \`${{ inputs.op_model }}\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   mirror_toolchain:
