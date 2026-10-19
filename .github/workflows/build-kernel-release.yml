@@ -13,10 +13,16 @@ on:
         type: boolean
         default: true
       op_model:
-        description: 'Select the OKI kernels to build'
+        description: 'Select the OnePlus kernels to build'
         required: true
         type: choice
         options:
+          - A14+15+16
+          - A15+16
+          - A14+15
+          - A16
+          - A15
+          - A14
           - OOS14+15+16
           - OOS15+16
           - OOS14+15
@@ -28,12 +34,12 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: OOS16
+        default: A14+15+16
       config_path:
-        description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/oos16/OP11.json)'
+        description: 'Optional exact config path for a single-device validation build (for example configs/a16/OP12.json or configs/oos16/OP12.json)'
         required: false
         type: string
-        default: 'configs/oos16/OP12.json'
+        default: ''
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -41,6 +47,7 @@ on:
         options:
           - BakaSU
           - KSU
+          - KSUN
         default: BakaSU
       ksu_branch_or_hash:
         description: 'KSU branch or commit hash'
@@ -137,7 +144,10 @@ jobs:
             all_json_files=("$config_path")
             echo "Single-device validation config: $config_path"
           else
-            mapfile -t all_json_files < <(find configs/ -name "*.json" -print0 | xargs -0 -n1)
+            mapfile -t all_json_files < <(find configs/a* -name "*.json" 2>/dev/null | xargs -n1)
+            if [ ${#all_json_files[@]} -eq 0 ]; then
+              mapfile -t all_json_files < <(find configs/ -name "*.json" -print0 | xargs -0 -n1)
+            fi
           fi
           for i in "${!all_json_files[@]}"; do
             file="${all_json_files[$i]}"
@@ -154,33 +164,34 @@ jobs:
             jq_filter="."
           else
             jq_filter="."
-            case "$input" in
-            OOS14+15+16)
+            norm_input="${input//OOS/A}"
+            case "$norm_input" in
+            A14+15+16)
               ;;
-            OOS15+16)
-              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\"))"
+            A15+16)
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\"))"
               ;;
-            OOS14+15)
-              jq_filter="map(select(.os_version == \"OOS14\" or .os_version == \"OOS15\"))"
+            A14+15)
+              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"A15\" or .os_version == \"OOS14\" or .os_version == \"OOS15\"))"
               ;;
-            OOS16)
-              jq_filter="map(select(.os_version == \"OOS16\"))"
+            A16)
+              jq_filter="map(select(.os_version == \"A16\" or .os_version == \"OOS16\"))"
               ;;
-            OOS15)
-              jq_filter="map(select(.os_version == \"OOS15\"))"
+            A15)
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"OOS15\"))"
               ;;
-            OOS14)
-              jq_filter="map(select(.os_version == \"OOS14\"))"
+            A14)
+              jq_filter="map(select(.os_version == \"A14\" or .os_version == \"OOS14\"))"
               ;;
             android*-*.*)
               # Extract android version and kernel version
-              IFS='-' read -r av kv <<< "$input"
+              IFS='-' read -r av kv <<< "$norm_input"
               
-              # Build android*-* only for OOS15 and OOS16
-              jq_filter="map(select(.os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
+              # Build android*-* only for A15/16 and OOS15/16
+              jq_filter="map(select(.os_version == \"A15\" or .os_version == \"A16\" or .os_version == \"OOS15\" or .os_version == \"OOS16\")) | map(select(.android_version == \"$av\" and .kernel_version == \"$kv\"))"
               
               echo "ℹ️  Android-Kernel filter applied: $av-$kv"
-              echo "   Restricted to: OOS15 and OOS16 only"
+              echo "   Restricted to: A15/OOS15 and A16/OOS16 only"
               ;;
             *)
               echo "::warning::Unknown input '$input'. Using empty filter."
@@ -194,7 +205,7 @@ jobs:
           
           filtered=$(echo "$filtered" | jq '
             sort_by(
-              (.os_version | gsub("OOS"; "") | tonumber) * -1,
+              (.os_version | gsub("OOS|A"; "") | tonumber) * -1,
               .model
             )
           ')
@@ -225,6 +236,9 @@ jobs:
           if [ "$ksu_type" == "BakaSU" ]; then
             KSU_REPO_OWNER="Baka-SU"
             KSU_REPO_NAME="BakaSU"
+          elif [ "$ksu_type" == "KSUN" ]; then
+            KSU_REPO_OWNER="KernelSU-Next"
+            KSU_REPO_NAME="KernelSU-Next"
           else
             KSU_REPO_OWNER="tiann"
             KSU_REPO_NAME="KernelSU"
