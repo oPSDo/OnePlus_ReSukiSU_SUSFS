@@ -30,10 +30,10 @@ on:
           - android12-5.10
         default: A16
       config_path:
-        description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/a16/OP11.json)'
+        description: 'Optional exact config path for a single-device validation build (for example configs/oos16/OP-ACE-2.json or configs/oos16/OP11.json)'
         required: false
         type: string
-        default: 'configs/a16/OP12.json'
+        default: 'configs/oos16/OP12.json'
       ksu_type:
         description: 'Select KSU Type'
         required: true
@@ -1272,7 +1272,7 @@ jobs:
           if [ "$ksu_type" == "BakaSU" ]; then
             cat << EOF >> release_notes.md
           - **BakaSU Manager**  
-            → [Offical Documentation](https://BakaSU.github.io/guide/install.html#Get-manager)
+            → [Offical Documentation](https://bakasu.org)
           EOF
           elif [ "$ksu_type" == "KSU" ]; then
             cat << EOF >> release_notes.md
