@@ -34,12 +34,12 @@ on:
           - android14-6.1
           - android13-5.15
           - android12-5.10
-        default: A14+15+16
+        default: A16
       config_path:
         description: 'Optional exact config path for a single-device validation build (for example configs/a16/OP12.json or configs/oos16/OP12.json)'
         required: false
         type: string
-        default: ''
+        default: 'OP12.json'
       ksu_type:
         description: 'Select KSU Type'
         required: true
