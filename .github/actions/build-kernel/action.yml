@@ -201,8 +201,8 @@ runs:
         
         if [[ -z "$os_version" ]]; then
           errors+=("Input 'os_version' cannot be empty")
-        elif [[ ! "$os_version" =~ ^OOS ]]; then
-          errors+=("Input 'os_version' does not start with 'OOS'. Got: '$os_version'")
+        elif [[ ! "$os_version" =~ ^(A|OOS) ]]; then
+          errors+=("Input 'os_version' must start with 'A' or 'OOS'. Got: '$os_version'")
         fi
         
         if [[ -z "$hmbird" ]]; then
@@ -2332,19 +2332,14 @@ runs:
         echo "Clear Temporary cache files..."
         ccache -c
         
-        # 3h = 10800s using seconds to support older ccache
-        ccache --evict-older-than 10800s
-        
-        echo "Perform LTO cache eviction!"
-        if [ -d "$LDCACHE_DIR" ]; then
-          # Delete LTO cache files modified more than 180 minutes (3 hours) ago
-          find "$LDCACHE_DIR" -type f -amin +180 -delete
-          find "$LDCACHE_DIR" -type d -empty -delete
-        fi
-        
-        if [ -f "${{ env.CCACHE_LOGFILE }}" ]; then
-          cp "${{ env.CCACHE_LOGFILE }}" "$CCACHE_DIR"
-        fi
+        echo "Perform ccache eviction!"
+        # 0.5 days = 12 Hrs. Delete cache unused in 12 hrs. 12 hrs is considered for safety.
+        # Yes. ccache uses mtime as a store of time due to cross compatibility with different OS.
+        find "$CCACHE_DIR" -type f -mtime +0.5 -delete
+        # Remove empty layout subdirectories
+        find "$CCACHE_DIR" -type d -empty -delete
+
+        cp "${{ env.CCACHE_LOGFILE }}" "$CCACHE_DIR"
         
         if [ "${{ inputs.debug }}" == "true" ]; then
           if [ -f "${{ env.CCACHE_LOGFILE }}" ]; then
@@ -2475,6 +2470,8 @@ runs:
         
         mv "${ARTIFACTS_FOLDER}/${OP_MODEL}_${OP_OS_VERSION}.txt" "$AK3_FOLDER/"
         cd "$AK3_FOLDER"
+        
+        sed -i 's/do.check_boot_version=.*/do.check_boot_version=1/' anykernel.sh
         
         if [ "${{ inputs.ksu_type }}" = "BakaSU" ]; then
           cp "$GITHUB_ACTION_PATH/assets/bakasu-banner" banner
