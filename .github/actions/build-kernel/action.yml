@@ -2415,14 +2415,17 @@ runs:
         # Remove empty layout subdirectories
         find "$CCACHE_DIR" -type d -empty -delete
 
-        cp "${{ env.CCACHE_LOGFILE }}" "$CCACHE_DIR"
+        ccache_log="${CCACHE_LOGFILE:-${{ env.CCACHE_LOGFILE }}}"
+        if [ -n "$ccache_log" ] && [ -f "$ccache_log" ]; then
+          cp "$ccache_log" "$CCACHE_DIR"
+        fi
         
         if [ "${{ inputs.debug }}" == "true" ]; then
-          if [ -f "${{ env.CCACHE_LOGFILE }}" ]; then
+          if [ -n "$ccache_log" ] && [ -f "$ccache_log" ]; then
             echo "Rename ccache log"
-            LOG_DIR=$(dirname "${{ env.CCACHE_LOGFILE }}")
+            LOG_DIR=$(dirname "$ccache_log")
             NEW_LOG_NAME="${{ env.OP_MODEL }}_${{ env.OP_OS_VERSION }}_${{ env.KERNEL_FULL_VER }}_ccache.log"
-            mv "${{ env.CCACHE_LOGFILE }}" "$LOG_DIR/$NEW_LOG_NAME"
+            mv "$ccache_log" "$LOG_DIR/$NEW_LOG_NAME"
             echo "CCACHE_LOGFILE=$LOG_DIR/$NEW_LOG_NAME" >> $GITHUB_ENV
           else
             echo "⚠️ ccache log not found, skipping rename."
