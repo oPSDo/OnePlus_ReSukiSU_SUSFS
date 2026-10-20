@@ -993,13 +993,22 @@ runs:
         cd "$KERNEL_PLATFORM_FOLDER"
         echo "Adding BakaSU..."
         
-        if [ "${{ inputs.ksu_branch_or_hash }}" = "" ]; then
-          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -
-        else
-          curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -s "${{ inputs.ksu_branch_or_hash }}"
+        target_ref="${{ inputs.ksu_branch_or_hash }}"
+        if [ "$target_ref" = "" ] || [ "$target_ref" = "main" ]; then
+          if [ "${{ env.OP_SUSFS }}" = "true" ]; then
+            target_ref="sync-susfs"
+          else
+            target_ref="main"
+          fi
         fi
         
+        curl --fail --location --proto '=https' -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash -s "$target_ref"
+        
         cd KernelSU
+        
+        if [ -f "kernel/tools/susfs_compat.mk" ]; then
+          sed -i '/\$(error Please wait susfs update\.)/d' kernel/tools/susfs_compat.mk || true
+        fi
         
         BASE_VERSION=30700
         KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" $BASE_VERSION)
@@ -1014,8 +1023,8 @@ runs:
         echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
         
         echo "BakaSU Version: $KSU_VERSION"
-        echo "✅ BakaSU added (commit: ${KSU_COMMIT_SHA:0:8})"
-        echo "::endgroup::" 
+        echo "✅ BakaSU added (branch/commit: $target_ref, commit: ${KSU_COMMIT_SHA:0:8})"
+        echo "::endgroup::"
 
     - name: Add KernelSU
       shell: bash
