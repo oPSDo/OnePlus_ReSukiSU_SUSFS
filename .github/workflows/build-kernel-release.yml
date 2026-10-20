@@ -50,9 +50,9 @@ on:
           - KSUN
         default: BakaSU
       ksu_branch_or_hash:
-        description: 'KSU branch or commit hash'
+        description: 'KSU branch or commit hash (empty = auto default: KSUN->dev, BakaSU->sync-susfs/main, KSU->main)'
         type: string
-        default: 'main'
+        default: ''
       optimize_level:
         description: "Compiler optimization level"
         required: true
@@ -217,6 +217,28 @@ jobs:
             jq -r '.[] | "  - \(.model) (\(.os_version), \(.android_version)-\(.kernel_version))"' matrix.json
             exit 1
           fi
+
+          has_susfs=$(echo "$filtered" | jq '[.[] | select(.susfs == true)] | length > 0')
+
+          # Auto-detect default branch per ksu_type
+          if [ -z "$ksu_hash" ] || [ "$ksu_hash" == "default" ]; then
+            if [ "$ksu_type" == "KSUN" ]; then
+              ksu_hash="dev"
+            elif [ "$ksu_type" == "BakaSU" ]; then
+              if [ "$has_susfs" == "true" ]; then
+                ksu_hash="sync-susfs"
+              else
+                ksu_hash="main"
+              fi
+            else
+              ksu_hash="main"
+            fi
+          elif [ "$ksu_type" == "KSUN" ] && [ "$ksu_hash" == "main" ]; then
+            # KernelSU-Next uses 'dev', not 'main'
+            ksu_hash="dev"
+          elif [ "$ksu_type" == "BakaSU" ] && [ "$ksu_hash" == "main" ] && [ "$has_susfs" == "true" ]; then
+            ksu_hash="sync-susfs"
+          fi
           
           # Inject KSU type and hash into every device config
           merged_matrix=$(jq -n --argjson devices "$filtered" --arg ksu_type "$ksu_type" --arg ksu_hash "$ksu_hash" '[ $devices[] as $dev | ($dev + {ksu_type: $ksu_type, ksu_hash: $ksu_hash}) ]')
@@ -231,7 +253,7 @@ jobs:
           echo "count=$count" >> "$GITHUB_OUTPUT"
           
           ksu_type="${{ inputs.ksu_type }}"
-          ksu_ref="${{ inputs.ksu_branch_or_hash }}"
+          ksu_ref="$ksu_hash"
           
           if [ "$ksu_type" == "BakaSU" ]; then
             KSU_REPO_OWNER="Baka-SU"
@@ -480,7 +502,7 @@ jobs:
           ksu_ref="${{ inputs.ksu_branch_or_hash }}"
           
           ksu_display=""
-          if [ "$ksu_type" = "BakaSU" ] || [ "$ksu_type" = "KSU" ]; then
+          if [ -n "$ksu_type" ]; then
             if [[ "$ksu_ref" =~ ^[0-9a-f]{40}$ ]]; then
               ksu_display+="📌 \`$ksu_type\`, \`$ksu_ref\`"
             else
