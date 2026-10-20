@@ -324,8 +324,20 @@ jobs:
           declare -A susfs_hashes
           declare -A susfs_versions_per_key
           
+          declare -A bakasu_default_commits=(
+            ["android12-5.10"]="ca7093a1a26f7911987110c34a1352d74cfb1d09"
+            ["android13-5.15"]="2ad297356931ba06b4edc0860f42fdd143b02ffd"
+            ["android14-6.1"]="5369359dbd10f6dd8cbdd59d1df7b788b29b168c"
+            ["android15-6.6"]="2d11d711de80f0f749b3055f8da8f7b9682454e4"
+            ["android16-6.12"]="acb92d4abc922cac384a207744b2db40281a7c7f"
+          )
+
           for key in "${active_keys[@]}"; do
-            default_val="${default_branches[$key]}"
+            if [ "${{ inputs.ksu_type }}" = "BakaSU" ]; then
+              default_val="${bakasu_default_commits[$key]:-${default_branches[$key]}}"
+            else
+              default_val="${default_branches[$key]}"
+            fi
             user_val="${user_inputs[$key]:-$default_val}"
             
             # Build GraphQL query — include blob fetch only when releasing

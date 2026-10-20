@@ -1321,6 +1321,55 @@ runs:
             echo "::error::Failed to remove unsupported BakaSU ksu_install_su_fd() call"
             exit 1
           fi
+          if ! grep -q "define KSU_NO_PREINIT" "$exec_file"; then
+            sed -i '1s/^/#ifndef KSU_NO_PREINIT\n#define KSU_NO_PREINIT 1\n#endif\n/' "$exec_file"
+            echo "Defined KSU_NO_PREINIT in $exec_file for BakaSU compatibility"
+          fi
+        fi
+
+        # Fallback weak symbols for KSU / SUSFS symbol compatibility (preinit & selinux)
+        susfs_c_file="./fs/susfs.c"
+        if [ -f "$susfs_c_file" ]; then
+          if ! grep -q "my_setprocattr" "$susfs_c_file"; then
+            cat >> "$susfs_c_file" << 'EOF'
+
+        /* Fallback weak symbols for KSU/SUSFS symbol compatibility */
+        struct filename;
+        struct user_arg_ptr;
+        int __attribute__((weak)) ksu_setup_preinit_file(struct filename **filename_ptr, struct user_arg_ptr *argv_user) {
+        	(void)filename_ptr;
+        	(void)argv_user;
+        	return 0;
+        }
+        int __attribute__((weak)) ksu_preinit_handle_post_execveat(int *fd, struct filename **filename_ptr, void *argv_user, void *envp_user, int *flags, int *retval, int *preinit_fd) {
+        	(void)fd;
+        	(void)filename_ptr;
+        	(void)argv_user;
+        	(void)envp_user;
+        	(void)flags;
+        	(void)retval;
+        	(void)preinit_fd;
+        	return 0;
+        }
+        int __attribute__((weak)) my_setprocattr(const char *name, void *value, size_t size) {
+        	(void)name;
+        	(void)value;
+        	(void)size;
+        	return 0;
+        }
+        ssize_t __attribute__((weak)) my_write_context(struct file *file, char *buf, size_t size) {
+        	(void)file;
+        	(void)buf;
+        	return size;
+        }
+        ssize_t __attribute__((weak)) my_write_access(struct file *file, char *buf, size_t size) {
+        	(void)file;
+        	(void)buf;
+        	return size;
+        }
+        EOF
+            echo "Appended fallback weak symbols to $susfs_c_file"
+          fi
         fi
 
         # SUSFS targets the newer four-argument API, while some OnePlus 5.10
@@ -1976,7 +2025,7 @@ runs:
         set -euo pipefail
         echo "::group::Resolve KSU Symbol Dependencies"
         echo "Injecting fallback weak symbol into KernelSU resolver..."
-        RESOLVER=$(find "$KSU_FOLDER" -name "symbol_resolver.c" | head -n 1)
+        RESOLVER=$(find "$KSU_FOLDER" -name "symbol_resolver.c" 2>/dev/null | head -n 1 || true)
         if [ -n "$RESOLVER" ]; then
           if ! grep -q "__weak kallsyms_on_each_symbol" "$RESOLVER"; then
             KERNEL_VER="${{ env.KERNEL_VER }}"
@@ -1997,8 +2046,9 @@ runs:
             echo "✅ Weak symbol already exists in resolver."
           fi
         else
-          echo "⚠️ symbol_resolver.c not found, skipping weak symbol injection."
+          echo "ℹ️ symbol_resolver.c not found in $KSU_FOLDER (normal for BakaSU)"
         fi
+        echo "::endgroup::" 
 
     - name: Save Build Metadata
       id: save_metadata
